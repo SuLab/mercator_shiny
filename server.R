@@ -6,11 +6,12 @@ library(gtools)
 library(stats)
 library(shiny)
 library(scales)
+library(plotly)
 
 shinyServer(function(input,output){  
 
-    output$tsne <- renderPlot({
-
+    ## output$tsne <- renderPlot({
+    output$tsne <- renderPlotly({
         ## ctDR <- read.table('data/scqpcr.csv',sep=',',header=T)
 
         ## ## remove duplicated rows
@@ -61,33 +62,40 @@ shinyServer(function(input,output){
         
         ## tsne.y$kmeans.cluster <- as.factor(tsne.y$kmeans.cluster)
 
-        ## tsne <- 
-        tsne <- ggplot(tsne.y, aes(y1,y2)) +
-            theme_bw() +
-            scale_x_continuous(breaks=seq(min(tsne.y$y1), max(tsne.y$y1), length.out = 10),
-                               minor_breaks = NULL) +
-            scale_y_continuous(breaks=seq(min(tsne.y$y2), max(tsne.y$y2), length.out = 10),
-                               minor_breaks = NULL) +
-            theme(axis.line=element_blank(),
-                  axis.text.x=element_blank(),
-                  axis.text.y=element_blank(),
-                  axis.ticks=element_blank(),
-                  axis.title.x=element_blank(),
-                  axis.title.y=element_blank(),
-                  panel.border=element_blank(),
-                  panel.grid.major=element_blank(),
-                  panel.grid.minor=element_blank()) 
+        tsne <- plot_ly(tsne.y,x=~y1,y=~y2,type='scatter',mode='markers',
+                        hoverinfo = 'text',
+                        text = ~paste(tissue_general,'<br>',project,'<br>',ethnicity))
+        ## tsne <- ggplot(tsne.y, aes(y1,y2)) +
+        ##     theme_bw() +
+        ##     scale_x_continuous(breaks=seq(min(tsne.y$y1), max(tsne.y$y1), length.out = 10),
+        ##                        minor_breaks = NULL) +
+        ##     scale_y_continuous(breaks=seq(min(tsne.y$y2), max(tsne.y$y2), length.out = 10),
+        ##                        minor_breaks = NULL) +
+        ##     theme(axis.line=element_blank(),
+        ##           axis.text.x=element_blank(),
+        ##           axis.text.y=element_blank(),
+        ##           axis.ticks=element_blank(),
+        ##           axis.title.x=element_blank(),
+        ##           axis.title.y=element_blank(),
+        ##           panel.border=element_blank(),
+        ##           panel.grid.major=element_blank(),
+        ##           panel.grid.minor=element_blank()) 
 
         if(input$genevsgroup == 1){
-            tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
+            ## tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
+            ## tsne <- tsne %>%
+            ##     add_trace(colour='black')
         }
 
         if(input$genevsgroup == 2){
             if(length(input$colorfactors) == 0){
-                tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9) 
+                ## tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
             }
             else{
-                tsne <- tsne + geom_point(aes(colour=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+')),size=2.9,alpha=0.9) + guides(color=guide_legend(title='Metadata Group'))
+                ## tsne <- tsne + geom_point(aes(colour=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+')),size=2.9,alpha=0.9) + guides(color=guide_legend(title='Metadata Group'))
+
+                tsne <- tsne %>%
+                add_trace(color=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+'))
             }
         }
         

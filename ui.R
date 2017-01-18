@@ -1,4 +1,5 @@
 library(shiny)
+library(plotly)
 
 ## tsne.y <- read.table('data/tsne_points.tsv',sep='\t',header=T)
 
@@ -58,10 +59,12 @@ shinyUI(fluidPage(
     ##                               selected = 1))
     ##     ),
                            
-               
+
+    
     fluidRow(
         column(12,
-               plotOutput('tsne'))
+               ## plotOutput('tsne'))
+               plotlyOutput('tsne'))
     )
    
 ))
