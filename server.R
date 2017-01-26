@@ -64,7 +64,7 @@ shinyServer(function(input,output){
 
         tsne <- plot_ly(tsne.y,x=~y1,y=~y2,type='scatter',mode='markers',
                         hoverinfo = 'text',
-                        text = ~paste(tissue_general,'<br>',project,'<br>',ethnicity))
+                        text = ~paste(tissue_general,'<br>',project,'<br>',tumor_sample_type))
         ## tsne <- ggplot(tsne.y, aes(y1,y2)) +
         ##     theme_bw() +
         ##     scale_x_continuous(breaks=seq(min(tsne.y$y1), max(tsne.y$y1), length.out = 10),
