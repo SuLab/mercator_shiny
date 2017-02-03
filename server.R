@@ -7,11 +7,37 @@ library(stats)
 library(shiny)
 library(scales)
 library(plotly)
+library(scatterD3)
 
 shinyServer(function(input,output){  
 
+    data <- reactive({
+        tsne.y <- readRDS('data/plotData.RDS')
+        return(tsne.y)
+    })
+
+
+    ## tsne.y <- readRDS('data/foo.RDS')
+
+    ## tsne.y <- readRDS('data/plotData.RDS')
+    
+    ## gene.dat <- read.table('data/gene_dat.tsv',sep='\t',header=T,stringsAsFactors=F)
+
+    ## tsne.y <- cbind(tsne.y,gene.dat)
+
+    ## tsne.y$kmeans.cluster <- as.factor(tsne.y$kmeans.cluster)
+
+    ## plotDat <- reactive({
+    ##     readRDS('data/plotData.RDS')
+    ##     })
+
+
     ## output$tsne <- renderPlot({
-    output$tsne <- renderPlotly({
+    ## output$tsne <- renderPlotly({
+    output$tsne <- renderScatterD3({
+
+        ## tsne.y <- plotDat()
+        
         ## ctDR <- read.table('data/scqpcr.csv',sep=',',header=T)
 
         ## ## remove duplicated rows
@@ -57,14 +83,15 @@ shinyServer(function(input,output){
         ##     tsne_y[, i] <- as.numeric(tsne_y[, i])
         ## }
 
-        tsne.y <- readRDS('data/plotData.RDS')
         
-        
-        ## tsne.y$kmeans.cluster <- as.factor(tsne.y$kmeans.cluster)
 
-        tsne <- plot_ly(tsne.y,x=~y1,y=~y2,type='scatter',mode='markers',
-                        hoverinfo = 'text',
-                        text = ~paste(tissue_general,'<br>',project,'<br>',tumor_sample_type))
+        ## tsne <- plot_ly(tsne.y,x=~y1,y=~y2,type='scatter',mode='markers',
+        ##                 hoverinfo = 'text',
+        ##                 text = ~paste(tissue_general,'<br>',project,'<br>',tumor_sample_type))
+
+
+        ## tsne <- scatterD3(data=tsne.y,x=y1,y=y2,transitions=TRUE)
+        
         ## tsne <- ggplot(tsne.y, aes(y1,y2)) +
         ##     theme_bw() +
         ##     scale_x_continuous(breaks=seq(min(tsne.y$y1), max(tsne.y$y1), length.out = 10),
@@ -80,13 +107,26 @@ shinyServer(function(input,output){
         ##           panel.border=element_blank(),
         ##           panel.grid.major=element_blank(),
         ##           panel.grid.minor=element_blank()) 
-
+        colVar = NULL
         if(input$genevsgroup == 1){
             ## tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
             ## tsne <- tsne %>%
             ##     add_trace(colour='black')
         }
 
+
+        ## if(!(is.null(input$gene.vec))){
+        ##     input.dat <- read.table(input$gene.vec$datapath,sep='\t',header=F,stringsAsFactors=F)
+
+        ##     head(input.dat)
+        ##     dist.vec <- apply(tsne.y[,rownames(input.dat)],1,dist)
+
+        ##     tsne.y$distances <- dist.vec
+            
+        ##     tsne <- tsne %>%
+        ##         add_trace(color=~distances)
+        ## }
+        ## else{
         if(input$genevsgroup == 2){
             if(length(input$colorfactors) == 0){
                 ## tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
@@ -94,10 +134,15 @@ shinyServer(function(input,output){
             else{
                 ## tsne <- tsne + geom_point(aes(colour=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+')),size=2.9,alpha=0.9) + guides(color=guide_legend(title='Metadata Group'))
 
-                tsne <- tsne %>%
-                add_trace(color=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+'))
+                ## tsne <- tsne %>%
+                ##     add_trace(color=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+'))
+                ## tsne <- scatterD3(data=tsne.y,x=y1,y=y2,col_var=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+'),transitions=TRUE)
+
+                colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
+                
             }
         }
+        ## }
         
         ## if(input$genevsgroup == 3){
         ##     if(length(input$groupShape) == 0){
@@ -107,8 +152,12 @@ shinyServer(function(input,output){
         ##         tsne <- tsne + geom_point(aes(colour=tsne.y[,input$genecolor],shape=tsne.y[,input$groupShape]),size=2.9,alpha=0.9) + scale_colour_gradient2(low = 'red',mid='white',high='blue',limits=c(min(tsne.y[,input$genecolor]),max(tsne.y[,input$genecolor]))) + guides(color=guide_legend(title = sprintf('%s Expression',input$genecolor)),shape=guide_legend(title=input$groupShape))
         ##     }
         ## }
-        tsne
+
+        print(colVar)
+
+        scatterD3(x = data()[,'y1'],
+                  y = data()[,'y2'],
+                  col_var = colVar,
+                  transitions=TRUE)
     })
 })
-
-

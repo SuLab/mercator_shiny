@@ -34,6 +34,7 @@ shinyUI(fluidPage(
                                label = 'What to color by?',
                                choices = meta.choices,
                                selected = 'project'))
+        ),
 
         ## column(4,
         ##        selectInput("genealpha",
@@ -41,7 +42,17 @@ shinyUI(fluidPage(
         ##                    choices = gene.choices,
         ##                    selected='None'))
                
-        ),
+
+        ## column(4,
+        ##        fileInput('gene.vec','Color by euclidian distance to sample',
+        ##                  accept = c(
+        ##                      'text/tsv',
+        ##                      'text/tab-separated-values',
+        ##                      'text/plain',
+        ##                      '.tsv')
+        ##                  )
+        ##        )
+        ## ),
     
     
     ## fluidRow(
@@ -64,7 +75,7 @@ shinyUI(fluidPage(
     fluidRow(
         column(12,
                ## plotOutput('tsne'))
-               plotlyOutput('tsne'))
+               scatterD3Output('tsne'))
     )
    
 ))
