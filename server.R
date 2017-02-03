@@ -153,8 +153,6 @@ shinyServer(function(input,output){
         ##     }
         ## }
 
-        print(colVar)
-
         scatterD3(x = data()[,'y1'],
                   y = data()[,'y2'],
                   col_var = colVar,
