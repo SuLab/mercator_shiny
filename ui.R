@@ -1,5 +1,6 @@
 library(shiny)
 library(plotly)
+library(scatterD3)
 
 ## tsne.y <- read.table('data/tsne_points.tsv',sep='\t',header=T)
 
@@ -54,7 +55,6 @@ shinyUI(fluidPage(
         ##        )
         ## ),
     
-    
     ## fluidRow(
 
     ##     column(6,
@@ -69,13 +69,13 @@ shinyUI(fluidPage(
     ##                                              'K-Means Group' = 'kmeans.cluster'),
     ##                               selected = 1))
     ##     ),
-                           
-
     
     fluidRow(
         column(12,
                ## plotOutput('tsne'))
-               scatterD3Output('tsne'))
+               ## scatterD3Output('tsne',width='1400px',height='1400px')
+               plotlyOutput('tsne')
+               )
     )
    
 ))

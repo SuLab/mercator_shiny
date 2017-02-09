@@ -11,8 +11,25 @@ library(scatterD3)
 
 shinyServer(function(input,output){  
 
+    ## data <- reactive({
+    ##     tsne.y <- readRDS('data/plotData.RDS')
+    ##     return(tsne.y)
+    ## })
+
     data <- reactive({
         tsne.y <- readRDS('data/plotData.RDS')
+        ## rownames(tsne.y) <- NULL
+
+        ## mod.y <- tsne.y
+
+        ## for(i in 1:4){
+        ##     mod.y$y1 <- runif(nrow(mod.y),-60,60)
+        ##     mod.y$y2 <- runif(nrow(mod.y),-60,60)
+
+        ##     tsne.y <- rbind(tsne.y,mod.y)
+        ## }
+        
+        
         return(tsne.y)
     })
 
@@ -33,8 +50,8 @@ shinyServer(function(input,output){
 
 
     ## output$tsne <- renderPlot({
-    ## output$tsne <- renderPlotly({
-    output$tsne <- renderScatterD3({
+    output$tsne <- renderPlotly({
+    ## output$tsne <- renderScatterD3({
 
         ## tsne.y <- plotDat()
         
@@ -153,9 +170,11 @@ shinyServer(function(input,output){
         ##     }
         ## }
 
-        scatterD3(x = data()[,'y1'],
-                  y = data()[,'y2'],
-                  col_var = colVar,
-                  transitions=TRUE)
+        output.plot <- plot_ly(data(), x = ~y1, y = ~y2) %>% toWebGL()
+        output.plot
+        ## scatterD3(x = data()[,'y1'],
+        ##           y = data()[,'y2'],
+        ##           col_var = colVar)
+                  ## transitions=TRUE)
     })
 })
