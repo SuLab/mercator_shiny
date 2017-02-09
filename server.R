@@ -29,7 +29,6 @@ shinyServer(function(input,output){
         ##     tsne.y <- rbind(tsne.y,mod.y)
         ## }
         
-        
         return(tsne.y)
     })
 
@@ -170,7 +169,7 @@ shinyServer(function(input,output){
         ##     }
         ## }
 
-        output.plot <- plot_ly(data(), x = ~y1, y = ~y2) %>% toWebGL()
+        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,color = colVar) %>% toWebGL()
         output.plot
         ## scatterD3(x = data()[,'y1'],
         ##           y = data()[,'y2'],
