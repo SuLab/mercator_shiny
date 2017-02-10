@@ -11,13 +11,11 @@ library(scatterD3)
 
 shinyServer(function(input,output){  
 
-    ## data <- reactive({
-    ##     tsne.y <- readRDS('data/plotData.RDS')
-    ##     return(tsne.y)
-    ## })
 
     data <- reactive({
         tsne.y <- readRDS('data/plotData.RDS')
+
+        ## creates extra datapoints
         ## rownames(tsne.y) <- NULL
 
         ## mod.y <- tsne.y
@@ -32,6 +30,30 @@ shinyServer(function(input,output){
         return(tsne.y)
     })
 
+
+    output$tsne <- renderPlotly({
+        colVar = NULL
+        if(input$genevsgroup == 1){
+        }
+
+        if(input$genevsgroup == 2){
+            if(length(input$colorfactors) == 0){
+
+            }
+            else{
+
+                colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
+                
+            }
+        }
+
+        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,color = colVar) %>%
+            config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
+            layout(dragmode = "pan") %>%
+            toWebGL()
+        output.plot
+    })
+})
 
     ## tsne.y <- readRDS('data/foo.RDS')
 
@@ -49,7 +71,9 @@ shinyServer(function(input,output){
 
 
     ## output$tsne <- renderPlot({
-    output$tsne <- renderPlotly({
+
+
+
     ## output$tsne <- renderScatterD3({
 
         ## tsne.y <- plotDat()
@@ -123,12 +147,20 @@ shinyServer(function(input,output){
         ##           panel.border=element_blank(),
         ##           panel.grid.major=element_blank(),
         ##           panel.grid.minor=element_blank()) 
-        colVar = NULL
-        if(input$genevsgroup == 1){
+
+
+
+
             ## tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
             ## tsne <- tsne %>%
             ##     add_trace(colour='black')
-        }
+
+                ## tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
+
+    ## data <- reactive({
+    ##     tsne.y <- readRDS('data/plotData.RDS')
+    ##     return(tsne.y)
+    ## })
 
 
         ## if(!(is.null(input$gene.vec))){
@@ -143,21 +175,15 @@ shinyServer(function(input,output){
         ##         add_trace(color=~distances)
         ## }
         ## else{
-        if(input$genevsgroup == 2){
-            if(length(input$colorfactors) == 0){
-                ## tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
-            }
-            else{
+
+
                 ## tsne <- tsne + geom_point(aes(colour=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+')),size=2.9,alpha=0.9) + guides(color=guide_legend(title='Metadata Group'))
 
                 ## tsne <- tsne %>%
                 ##     add_trace(color=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+'))
                 ## tsne <- scatterD3(data=tsne.y,x=y1,y=y2,col_var=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+'),transitions=TRUE)
 
-                colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
-                
-            }
-        }
+
         ## }
         
         ## if(input$genevsgroup == 3){
@@ -169,14 +195,10 @@ shinyServer(function(input,output){
         ##     }
         ## }
 
-        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,color = colVar) %>%
-            config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
-            layout(dragmode = "pan") %>%
-            toWebGL()
-        output.plot
+
+
+
         ## scatterD3(x = data()[,'y1'],
         ##           y = data()[,'y2'],
         ##           col_var = colVar)
                   ## transitions=TRUE)
-    })
-})
