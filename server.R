@@ -169,7 +169,10 @@ shinyServer(function(input,output){
         ##     }
         ## }
 
-        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,color = colVar) %>% toWebGL()
+        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,color = colVar) %>%
+            config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
+            layout(dragmode = "pan") %>%
+            toWebGL()
         output.plot
         ## scatterD3(x = data()[,'y1'],
         ##           y = data()[,'y2'],

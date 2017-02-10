@@ -74,7 +74,7 @@ shinyUI(fluidPage(
         column(12,
                ## plotOutput('tsne'))
                ## scatterD3Output('tsne',width='1400px',height='1400px')
-               plotlyOutput('tsne')
+               plotlyOutput('tsne',width='1400px',height='1400px')
                )
     )
    
