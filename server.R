@@ -11,6 +11,13 @@ library(scatterD3)
 
 shinyServer(function(input,output){  
 
+    ax <- list(
+        title = "",
+        zeroline = FALSE,
+        showline = FALSE,
+        showticklabels = FALSE,
+        showgrid = FALSE
+    )
 
     data <- reactive({
         tsne.y <- readRDS('data/plotData.RDS')
@@ -49,7 +56,7 @@ shinyServer(function(input,output){
 
         output.plot <- plot_ly(data(), x = ~y1, y = ~y2,color = colVar) %>%
             config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
-            layout(dragmode = "pan") %>%
+            layout(dragmode = "pan",xaxis=ax,yaxis=ax) %>%
             toWebGL()
         output.plot
     })

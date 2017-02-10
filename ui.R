@@ -10,36 +10,70 @@ meta.choices <- as.list(names(tsne.y)[3:length(tsne.y)])
 names(meta.choices) <- names(tsne.y)[3:length(tsne.y)]
 meta.choices <- meta.choices[c('project','tissue_general','tissue_detail','tumor_id','tumor_stage','tumor_sample_type','living','age','sex','ethnicity','extraction_kit','seq_platform','sources')]
 
-shinyUI(fluidPage(
 
-    titlePanel("t-SNE test"),
-    fluidRow(
+div(class="outer",    
+    tags$head(includeCSS("styles.css")),
 
-        column(6,
-            radioButtons('genevsgroup',
-                         label = 'Choose method of coloring',
-                         choices = list('No Coloring' = 1,'Metadata' = 2),
-                         selected = 1)),
+    plotlyOutput('tsne',width='100%',height='100%'),
 
-        column(6,
-               checkboxGroupInput('colorfactors',
-                               label = 'What to color by?',
-                               choices = meta.choices,
-                               selected = 'project'))
-        ),
+    absolutePanel(id = "controls", class = "panel panel-default", fixed=TRUE,
+                  draggable=FALSE, top=60, left = 20, right="auto", bottom = "auto",
+                  width=330, height="auto",
 
-    fluidRow(
-        column(12,
-               plotlyOutput('tsne',width='1400px',height='1400px')
-               )
+                  h2("Color Controls"),
+    
+                  selectInput('genevsgroup',
+                               label = 'Choose method of coloring',
+                               choices = list('No Coloring' = 1,'Metadata' = 2),
+                               selected = 1),
+
+              
+                  ## radioButtons('genevsgroup',
+                  ##              label = 'Choose method of coloring',
+                  ##              choices = list('No Coloring' = 1,'Metadata' = 2),
+                  ##              selected = 1),
+
+                  selectInput('colorfactors',
+                              label = 'What to color by?',
+                              choices = meta.choices,
+                              selected = 'tissue-general',
+                              multiple=TRUE)
+
+                  ## checkboxGroupInput('colorfactors',
+                  ##                    label = 'What to color by?',
+                  ##                    choices = meta.choices,
+                  ##                    selected = 'project')
+                  )
     )
+
+
+
+
+## shinyUI(fluidPage(
+
+##     titlePanel("t-SNE test"),
+##     fluidRow(
+
+##         column(6,
+##             radioButtons('genevsgroup',
+##                          label = 'Choose method of coloring',
+##                          choices = list('No Coloring' = 1,'Metadata' = 2),
+##                          selected = 1)),
+
+##         column(6,
+##                checkboxGroupInput('colorfactors',
+##                                label = 'What to color by?',
+##                                choices = meta.choices,
+##                                selected = 'project'))
+##         ),
+
+##     fluidRow(
+##         column(12,
+##                plotlyOutput('tsne',width='1400px',height='1400px')
+##                )
+##     )
    
-))
-
-
-
-
-
+## ))
 
 
 
