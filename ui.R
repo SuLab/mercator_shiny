@@ -3,19 +3,34 @@ library(plotly)
 library(scatterD3)
 
 
+jswidth <-
+    '$(document).on("shiny:conntected", function(e) {
+    var jsWidth = screen.width;
+    Shiny.onInputChange("GetScreenWidth",jsWidth)
+});
+'
+
+jsheight <-
+    '$(document).on("shiny:conntected", function(e) {
+    var jsHeight = screen.height;
+    Shiny.onInputChange("GetScreenHeight",jsHeight)
+});
+'
 
 tsne.y <- readRDS('data/plotData.RDS')
 
 meta.choices <- as.list(names(tsne.y)[3:length(tsne.y)])
 names(meta.choices) <- names(tsne.y)[3:length(tsne.y)]
-meta.choices <- meta.choices[c('project','tissue_general','tissue_detail','tumor_id','tumor_stage','tumor_sample_type','living','age','sex','ethnicity','extraction_kit','seq_platform','sources')]
+## meta.choices <- meta.choices[c('project','tissue_general','tissue_detail','tumor_id','tumor_stage','tumor_sample_type','living','age','sex','ethnicity','extraction_kit','seq_platform','sources')]
 
 
 div(class="outer",    
     tags$head(includeCSS("styles.css")),
-
+    tags$script(jswidth),
+    tags$script(jsheight),
     plotlyOutput('tsne',width='100%',height='100%'),
-
+    ## plotlyOutput('tsne',width='1400px',height='1400px'),
+    ## plotlyOutput('tsne',width=jsWidth,height=jsHeight),
     absolutePanel(id = "controls", class = "panel panel-default", fixed=TRUE,
                   draggable=FALSE, top=60, left = 20, right="auto", bottom = "auto",
                   width=330, height="auto",
@@ -36,7 +51,6 @@ div(class="outer",
                   selectInput('colorfactors',
                               label = 'What to color by?',
                               choices = meta.choices,
-                              selected = 'tissue-general',
                               multiple=TRUE)
 
                   ## checkboxGroupInput('colorfactors',
