@@ -3,19 +3,19 @@ library(plotly)
 library(scatterD3)
 
 
-jswidth <-
-    '$(document).on("shiny:conntected", function(e) {
-    var jsWidth = screen.width;
-    Shiny.onInputChange("GetScreenWidth",jsWidth)
-});
-'
+## jswidth <-
+##     '$(document).on("shiny:conntected", function(e) {
+##     var jsWidth = screen.width;
+##     Shiny.onInputChange("GetScreenWidth",jsWidth)
+## });
+## '
 
-jsheight <-
-    '$(document).on("shiny:conntected", function(e) {
-    var jsHeight = screen.height;
-    Shiny.onInputChange("GetScreenHeight",jsHeight)
-});
-'
+## jsheight <-
+##     '$(document).on("shiny:conntected", function(e) {
+##     var jsHeight = screen.height;
+##     Shiny.onInputChange("GetScreenHeight",jsHeight)
+## });
+## '
 
 tsne.y <- readRDS('data/plotData.RDS')
 
@@ -26,8 +26,8 @@ names(meta.choices) <- names(tsne.y)[3:length(tsne.y)]
 
 div(class="outer",    
     tags$head(includeCSS("styles.css")),
-    tags$script(jswidth),
-    tags$script(jsheight),
+    ## tags$script(jswidth),
+    ## tags$script(jsheight),
     plotlyOutput('tsne',width='100%',height='100%'),
     ## plotlyOutput('tsne',width='1400px',height='1400px'),
     ## plotlyOutput('tsne',width=jsWidth,height=jsHeight),
@@ -37,10 +37,10 @@ div(class="outer",
 
                   h2("Color Controls"),
     
-                  selectInput('genevsgroup',
-                               label = 'Choose method of coloring',
-                               choices = list('No Coloring' = 1,'Metadata' = 2),
-                               selected = 1),
+                  ## selectInput('genevsgroup',
+                  ##              label = 'Choose method of coloring',
+                  ##              choices = list('No Coloring' = 1,'Metadata' = 2),
+                  ##              selected = 1),
 
               
                   ## radioButtons('genevsgroup',
@@ -51,7 +51,23 @@ div(class="outer",
                   selectInput('colorfactors',
                               label = 'What to color by?',
                               choices = meta.choices,
-                              multiple=TRUE)
+                              multiple=TRUE),
+
+                  fileInput('euclid_input',
+                            label='Euclidian coloring',
+                            accept = c(
+                                "text/tsv",
+                                "text/tab-separated-values,text/plain",
+                                ".tsv")
+                            ),
+
+                  fileInput('spearman_input',
+                            label='Spearman coloring',
+                            accept = c(
+                                'text/tsv',
+                                'text/tab-separated-values,text/plain',
+                                '.tsv')
+                            )
 
                   ## checkboxGroupInput('colorfactors',
                   ##                    label = 'What to color by?',
@@ -59,8 +75,6 @@ div(class="outer",
                   ##                    selected = 'project')
                   )
     )
-
-
 
 
 ## shinyUI(fluidPage(

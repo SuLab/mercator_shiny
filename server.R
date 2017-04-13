@@ -8,6 +8,17 @@ library(shiny)
 library(scales)
 library(plotly)
 library(scatterD3)
+library(httr)
+
+
+## lasso2d = '{
+##     name: 'lasso2d',
+##     title: 'Lasso Select',
+##     attr: 'dragmode',
+##     val: 'lasso',
+##     icon: Icons.lasso,
+##     click: handleCartesian
+## };'
 
 shinyServer(function(input,output){  
 
@@ -34,28 +45,85 @@ shinyServer(function(input,output){
         ##     tsne.y <- rbind(tsne.y,mod.y)
         ## }
         
+        ## tsne.y$tissue_detail[unlist(sapply(tsne.y$tissue_detail,function(x) !grepl("Adenocarcinoma",x)))] <- "NA"
+        ## tsne.y$tissue_general[tsne.y$tissue_general != "hESC"] <- "NA"
+
         return(tsne.y)
     })
 
-
     output$tsne <- renderPlotly({
-        colVar = NULL
-        if(input$genevsgroup == 1){
+
+        euclid.file <- input$euclid_input
+        spear.file <- input$spearman_input
+        
+        colVar <- NULL
+        ## colVar = NULL
+        ## if(input$genevsgroup == 0){
+        ## }
+
+        ## if(input$genevsgroup == 2){
+        ## if(length(input$colorfactors) == 0){
+            
+        ## }
+        if(length(input$colorfactors) > 0){
+
+            colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
+            
+        }
+        ## }
+
+        if(!is.null(spear.file)){
+
+            req <- POST("http://localhost:3000/spearman_distance",body=upload_file(spear.file$datapath,'text/plain'))
+            stop_for_status(req)
+            
+            req.text <- content(req,"text","text/plain")
+
+            con <- textConnection(req.text)
+            dist.vec <- read.table(con,sep='\t',header=T)
+
+            dat.rows <- rownames(data())
+            dat.rows <- gsub('-','.',dat.rows)
+            dat.rows <- sub('^([0-9])','X\\1',dat.rows)
+
+            colVar <- dist.vec[dat.rows,]
+
+            colVar <- order(colVar)
+
+            ## print(min(colVar))
+
+            ## ## colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
+
+            ## print(min(colVar))
         }
 
-        if(input$genevsgroup == 2){
-            if(length(input$colorfactors) == 0){
+        if(!is.null(euclid.file)){
 
-            }
-            else{
+            req <- POST("http://localhost:3000/euclid_distance",body=upload_file(euclid.file$datapath,'text/plain'))
+            stop_for_status(req)
+            
+            req.text <- content(req,"text","text/plain")
 
-                colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
-                
-            }
+            con <- textConnection(req.text)
+            dist.vec <- read.table(con,sep='\t',header=T)
+
+            dat.rows <- rownames(data())
+            dat.rows <- gsub('-','.',dat.rows)
+            dat.rows <- sub('^([0-9])','X\\1',dat.rows)
+
+            colVar <- dist.vec[dat.rows,]
+
+            colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
+
+            colVar <- order(colVar)
+
         }
 
-        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,color = colVar) %>%
-            config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
+        
+
+        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVar) %>%
+            ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
+            ## config(collaborate=FALSE) %>%
             layout(dragmode = "pan",xaxis=ax,yaxis=ax) %>%
             toWebGL()
         output.plot
