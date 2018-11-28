@@ -1,6 +1,7 @@
 library(shiny)
 library(plotly)
 library(scatterD3)
+library(shinyTree)
 
 
 ## jswidth <-
@@ -17,10 +18,21 @@ library(scatterD3)
 ## });
 ## '
 
-tsne.y <- readRDS('data/plotData.RDS')
+## tsne.y <- readRDS('data/all_recount_metasra_summarized.RDS')
 
-meta.choices <- as.list(names(tsne.y)[3:length(tsne.y)])
-names(meta.choices) <- names(tsne.y)[3:length(tsne.y)]
+## meta.choices <- as.list(names(tsne.y)[5:length(tsne.y)])
+## names(meta.choices) <- names(tsne.y)[5:length(tsne.y)]
+
+meta.choices <- readRDS('data/metadata_fields.RDS')
+
+tsne.choices <- readRDS('data/tsne_pca_list_names.RDS')
+## tsne.choices <- as.list(tsne.choices.vec)
+names(tsne.choices) <- sapply(tsne.choices,function(x) {
+    y <- strsplit(x,'[.]')[[1]]
+    sprintf('Perplexity = %s, PCs = %s',y[1],y[2])
+})
+tsne.choices <- as.list(tsne.choices)
+## names(tsne.choices) <- tsne.choices
 ## meta.choices <- meta.choices[c('project','tissue_general','tissue_detail','tumor_id','tumor_stage','tumor_sample_type','living','age','sex','ethnicity','extraction_kit','seq_platform','sources')]
 
 
@@ -48,31 +60,49 @@ div(class="outer",
                   ##              choices = list('No Coloring' = 1,'Metadata' = 2),
                   ##              selected = 1),
 
+                  selectInput('whichTSNE',
+                              label = 'What t-SNE to plot?',
+                              choices = tsne.choices,
+                              multiple=FALSE),
+                           
+
                   selectInput('colorfactors',
                               label = 'What to color by?',
                               choices = meta.choices,
                               multiple=TRUE),
 
-                  fileInput('euclid_input',
-                            label='Euclidian coloring',
-                            accept = c(
-                                "text/tsv",
-                                "text/tab-separated-values,text/plain",
-                                ".tsv")
-                            ),
+                  shinyTree('tree',theme='proton')
 
-                  fileInput('spearman_input',
-                            label='Spearman coloring',
-                            accept = c(
-                                'text/tsv',
-                                'text/tab-separated-values,text/plain',
-                                '.tsv')
-                            )
+                  ## fileInput('euclid_input',
+                  ##           label='Euclidian coloring',
+                  ##           accept = c(
+                  ##               "text/tsv",
+                  ##               "text/tab-separated-values,text/plain",
+                  ##               ".tsv")
+                  ##           ),
+
+                  ## fileInput('spearman_input',
+                  ##           label='Spearman coloring',
+                  ##           accept = c(
+                  ##               'text/tsv',
+                  ##               'text/tab-separated-values,text/plain',
+                  ##               '.tsv')
+                  ##           ),
+
+                  ## fileInput('euclid_pca_input',
+                  ##           label='Euclid PCA coloring',
+                  ##           accept = c(
+                  ##               'text/tsv',
+                  ##               'text/tab-separated-values,text/plain',
+                  ##               '.tsv')
+                  ##           )
+
 
                   ## checkboxGroupInput('colorfactors',
                   ##                    label = 'What to color by?',
                   ##                    choices = meta.choices,
                   ##                    selected = 'project')
+
                   )
     )
 

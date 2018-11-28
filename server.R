@@ -9,6 +9,7 @@ library(scales)
 library(plotly)
 library(scatterD3)
 library(httr)
+library(shinyTree)
 
 
 ## lasso2d = '{
@@ -30,9 +31,30 @@ shinyServer(function(input,output){
         showgrid = FALSE
     )
 
-    data <- reactive({
-        tsne.y <- readRDS('data/plotData.RDS')
+    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex.RDS')
+    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex_fewer_genes.RDS')
+    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex.RDS')
+    tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_over50_noSingle_entrez.RDS')
 
+
+    tsne.meta <- readRDS('data/gtex_tcga_meta.RDS')
+    rownames(tsne.meta) <- tsne.meta$data_id
+    tsne.meta <- tsne.meta[rownames(tsne.data[[1]]),]
+
+    data <- reactive({
+        ## tsne.data <- readRDS('data/recount_tsne.RDS')
+        ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex.RDS')
+        ## tsne.y <- data.frame(y1=tsne.data$Y[,1],y2=tsne.data$Y[,2])
+
+        tsne.y <- data.frame(tsne.data[[input$whichTSNE]])
+        colnames(tsne.y) <- c('y1','y2')
+
+        tsne.y <- cbind(tsne.y,tsne.meta)
+
+        ## tsne.meta <- as.data.frame(readRDS('data/all_recount_metasra_summarized.RDS'))
+        ## tsne.meta <- tsne.meta[rownames(tsne.y),]
+
+        ## tsne.y <- cbind(tsne.y,tsne.meta)
         ## creates extra datapoints
         ## rownames(tsne.y) <- NULL
 
@@ -48,14 +70,21 @@ shinyServer(function(input,output){
         ## tsne.y$tissue_detail[unlist(sapply(tsne.y$tissue_detail,function(x) !grepl("Adenocarcinoma",x)))] <- "NA"
         ## tsne.y$tissue_general[tsne.y$tissue_general != "hESC"] <- "NA"
 
+        ## return(tsne.y)
         return(tsne.y)
     })
+
+    tree.dat <- readRDS('data/mesh_tree_flat.RDS')
+
+    output$tree <- renderTree(tree.dat)
+        
 
     output$tsne <- renderPlotly({
 
         euclid.file <- input$euclid_input
         spear.file <- input$spearman_input
-        
+        euclid.pca.file <- input$euclid_pca_input
+
         colVar <- NULL
         ## colVar = NULL
         ## if(input$genevsgroup == 0){
@@ -72,60 +101,90 @@ shinyServer(function(input,output){
         }
         ## }
 
-        if(!is.null(spear.file)){
+        ## if(!is.null(spear.file)){
 
-            req <- POST("http://localhost:3000/spearman_distance",body=upload_file(spear.file$datapath,'text/plain'))
-            stop_for_status(req)
+        ##     req <- POST("http://localhost:3000/spearman_distance",body=upload_file(spear.file$datapath,'text/plain'))
+        ##     stop_for_status(req)
             
-            req.text <- content(req,"text","text/plain")
+        ##     req.text <- content(req,"text","text/plain")
 
-            con <- textConnection(req.text)
-            dist.vec <- read.table(con,sep='\t',header=T)
+        ##     con <- textConnection(req.text)
+        ##     dist.vec <- read.table(con,sep='\t',header=T)
 
-            dat.rows <- rownames(data())
-            dat.rows <- gsub('-','.',dat.rows)
-            dat.rows <- sub('^([0-9])','X\\1',dat.rows)
+        ##     dat.rows <- rownames(data())
+        ##     dat.rows <- gsub('-','.',dat.rows)
+        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
 
-            colVar <- dist.vec[dat.rows,]
+        ##     colVar <- dist.vec[dat.rows,]
 
-            colVar <- order(colVar)
+        ##     colVar <- order(colVar)
 
-            ## print(min(colVar))
+        ##     ## print(min(colVar))
 
-            ## ## colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
+        ##     ## ## colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
 
-            ## print(min(colVar))
-        }
+        ##     ## print(min(colVar))
+        ## }
 
-        if(!is.null(euclid.file)){
+        ## if(!is.null(euclid.file)){
 
-            req <- POST("http://localhost:3000/euclid_distance",body=upload_file(euclid.file$datapath,'text/plain'))
-            stop_for_status(req)
+        ##     req <- POST("http://localhost:3000/euclid_distance",body=upload_file(euclid.file$datapath,'text/plain'))
+        ##     stop_for_status(req)
             
-            req.text <- content(req,"text","text/plain")
+        ##     req.text <- content(req,"text","text/plain")
 
-            con <- textConnection(req.text)
-            dist.vec <- read.table(con,sep='\t',header=T)
+        ##     con <- textConnection(req.text)
+        ##     dist.vec <- read.table(con,sep='\t',header=T)
 
-            dat.rows <- rownames(data())
-            dat.rows <- gsub('-','.',dat.rows)
-            dat.rows <- sub('^([0-9])','X\\1',dat.rows)
+        ##     dat.rows <- rownames(data())
+        ##     dat.rows <- gsub('-','.',dat.rows)
+        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
 
-            colVar <- dist.vec[dat.rows,]
+        ##     colVar <- dist.vec[dat.rows,]
 
-            colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
+        ##     colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
 
-            colVar <- order(colVar)
+        ##     colVar <- order(colVar)
 
-        }
+        ## }
 
+        ## if(!is.null(euclid.pca.file)){
+
+        ##     req <- POST("http://localhost:3000/euclid_pca",body=upload_file(euclid.pca.file$datapath,'text/plain'))
+        ##     stop_for_status(req)
+            
+        ##     req.text <- content(req,"text","text/plain")
+
+        ##     con <- textConnection(req.text)
+        ##     dist.vec <- read.table(con,sep='\t',header=T)
+
+        ##     print(head(dist.vec))
+
+        ##     dat.rows <- rownames(data())
+        ##     dat.rows <- gsub('-','.',dat.rows)
+        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
+
+        ##     colVar <- dist.vec[dat.rows,]
+        ##     ## colVar <- sqrt(colVar)
+        ##     ## colVar <- max(colVar) - colVar
+
+
+        ##     colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
+        ##     colVar <- log(colVar)
+        ##     colVar <- 1.01 ^ (max(colVar) - colVar)
+
+        ##     ## colVar <- order(colVar)
+
+        ## }
         
 
-        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVar) %>%
+        ## output.plot <- plot_ly(data(), x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVar,hoverInfo='text',text=colVar) %>%
+        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVar,text=colVar) %>%
             ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
             ## config(collaborate=FALSE) %>%
             layout(dragmode = "pan",xaxis=ax,yaxis=ax) %>%
             toWebGL()
+
         output.plot
     })
 })
