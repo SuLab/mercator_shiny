@@ -10,7 +10,8 @@ library(plotly)
 library(scatterD3)
 library(httr)
 library(shinyTree)
-
+library(jsonlite)
+library(DT)
 
 ## lasso2d = '{
 ##     name: 'lasso2d',
@@ -21,7 +22,7 @@ library(shinyTree)
 ##     click: handleCartesian
 ## };'
 
-shinyServer(function(input,output){  
+shinyServer(function(input,output,session){  
 
     ax <- list(
         title = "",
@@ -35,11 +36,123 @@ shinyServer(function(input,output){
     ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex_fewer_genes.RDS')
     ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex.RDS')
     tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_over50_noSingle_entrez.RDS')
-
+    tsne.order <- rownames(tsne.data[[1]])
 
     tsne.meta <- readRDS('data/gtex_tcga_meta.RDS')
     rownames(tsne.meta) <- tsne.meta$data_id
-    tsne.meta <- tsne.meta[rownames(tsne.data[[1]]),]
+    tsne.meta <- tsne.meta[tsne.order,]
+
+    gene.tpm.samps <- readRDS('data/tpm_mat_rownames.RDS')
+
+    ## gene.choices <- readRDS('data/gene_ids.RDS')
+    gene.choices <- readRDS('data/gene_label_vector.RDS')
+
+    kmeans.dat <- readRDS('data/kmeans_1to100_recount_250_dim_noScaled_noProj_over50_noSingle.RDS')
+
+    louvain.vec <- readRDS('data/louvain_pca_over50_k30.RDS')
+
+    user.selections <- reactiveValues(
+        selection.list = list(),
+        selection.datalist = data.frame(),
+        gene.input.results = NULL
+    )
+    
+
+    ## selection.list <- list()
+    ## selection.datalist <- data.frame()
+
+    updateSelectizeInput(session,
+                         'whichGene',
+                         choices=gene.choices,
+                         server=TRUE,
+                         options=list(maxOptions=10,
+                                      closeAfterSelect=TRUE
+                                      )
+                         )
+
+
+    selection.getDatalist <- reactive({
+
+        input$saveSelection
+
+        ## print('get datalist')
+        ## print(user.selections$selection.list)
+        
+        if(length(user.selections$selection.list) == 0){
+
+            return(data.frame('name'='demo','length'=0))
+
+        }
+        else{
+            return(user.selections$selection.datalist)
+        }
+    })
+
+
+
+    observeEvent(input$saveSelection, {
+        
+        event.data <- event_data('plotly_selected',source = 'tsne')
+
+        if(is.null(event.data) == TRUE) return(NULL)
+        
+        inds <- event.data$pointNumber+1
+
+        user.selections$selection.list[[length(user.selections$selection.list)+1]] <- inds
+
+        ## print(length(user.selections$selection.list))
+
+        label <- input$selectionName
+
+        if(label == ''){
+            label <- sprintf('Selection %d',length(user.selections$selection.list))
+        }
+
+        user.selections$selection.datalist <- rbind(user.selections$selection.datalist,data.frame('name'=label,'length'=nrow(event.data)))
+
+    })
+
+
+
+    output$selectionList <- DT::renderDT({
+
+        datalist <- selection.getDatalist()
+
+
+        dataDT <- DT::datatable(datalist,
+                                options = list(
+                                    searching = FALSE,
+                                    paging = FALSE,
+                                    info = FALSE)
+                                )
+        
+        ## print(datalist)
+        ## print(selection.list)
+
+        ## return(datalist)
+        return(dataDT)
+    })
+
+    observeEvent(input$gene.vec, {
+
+        req <- POST('http://localhost:3000/euclid_pca',body=upload_file('euclid.pca.file$datapath','text/plain'))
+        stop_for_status(rep)
+
+        req.text <- content(req,'text','text/plain')
+
+        con <- textConnection(req.text)
+        dist.vec <- read.table(con,sep='\t',header=T)
+
+        print(head(dist.vec))
+
+        dat.rows <- rownames(data())
+        ## dat.rows <- gsub('-','.',dat.rows)
+        ## dat.rows
+
+        user.selections$gene.input.results <- dist.vec[dat.rows,]
+
+    })
+
 
     data <- reactive({
         ## tsne.data <- readRDS('data/recount_tsne.RDS')
@@ -74,118 +187,373 @@ shinyServer(function(input,output){
         return(tsne.y)
     })
 
+
+    geneVec <- reactive({
+
+        ## geneVec <- NULL
+
+        if(input$whichGene == ''){
+            return(NULL)
+        }
+        
+        gene.id <- strsplit(input$whichGene,', ')[[1]][3]
+
+        gene.info <- fromJSON(sprintf('http://localhost:3000/gene_vals/%s',gene.id))
+
+        names(gene.info) <- gene.tpm.samps
+
+        geneVec <- rep(NA,length(tsne.order))
+        names(geneVec) <- tsne.order
+
+        names.used <- intersect(tsne.order,gene.tpm.samps)
+
+        geneVec[names.used] <- gene.info[names.used]
+
+        ## gene.info <- gene.info[tsne.order]
+
+        return(geneVec)
+
+    })
+        
+
+    meshVec <- reactive({
+
+        tree <- input$tree
+
+        if(is.null(tree) | length(get_selected(tree)) == 0){
+            colVar=NULL
+        } else{
+            mesh.selection <- unlist(get_selected(tree))
+            mesh.id <- strsplit(mesh.selection,':')[[1]][1]
+            mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
+            colVar <- rep('unlabelled',length(tsne.order))
+            names(colVar) <- tsne.order
+
+            for(label in names(mesh.info)){
+                used.ids <- intersect(tsne.order,mesh.info[[label]])
+                colVar[used.ids] <- label
+            }
+        }
+        return(colVar)
+    })
+
+    selectionVec <- reactive({
+
+        rows <- input$selectionList_rows_selected
+
+        if(is.null(rows)){
+            return(NULL)
+        }
+
+        indVec <- c()
+        groupVec <- c()
+
+        dataResults <- data()
+
+        results <- data.frame()
+
+        for(rowNum in rows){
+
+            entry <- user.selections$selection.list[[rowNum]]
+
+            rowLabel <- sprintf('Selection: %s',user.selections$selection.datalist[rowNum,'name'])
+            
+            results <- rbind(results,data.frame(samps=rownames(dataResults)[entry],group=rep(rowLabel,length(entry))))
+
+            ## indVec <- c(indVec,entry)
+            ## groupVec <- c(groupVec,rep(rowNum,length(entry)))
+
+        }
+
+        ## return(list(
+        ##     indices = rownames(dataResults)[indVec],
+        ##     groups = groupVec
+        ## ))
+
+        return(results)
+
+    })
+
+    violinColVar <- reactive({
+        colVar <- NULL
+        if(input$colorButton == 0 | input$violinXFactors %in% c('No Coloring','Gene','Mesh','KMeans','Louvain')){
+            return(colVar)
+        }
+
+        colVar = apply(data()[,input$violinXFactors,drop=FALSE],1,paste,collapse='+')
+
+        return(colVar)
+
+    })
+
+    kmeansVec <- reactive({
+
+        ## print(input$kmeansChoice)
+        
+        return(kmeans.dat[[as.numeric(input$kmeansChoice)]])
+
+    })
+
+    louvainVec <- reactive({
+
+        return(louvain.vec)
+    })
+
+    colVar <- reactive({
+        
+        colVar <- NULL
+        ## if(TRUE){return(colVar)}
+        if(input$colorButton == 0 | input$colorfactors %in% c('No Coloring','Gene','Mesh','KMeans','Louvain')){
+            return(colVar)
+        }
+
+        ## geneVecResults <- geneVec()
+
+        ## if(length(input$colorfactors) > 0){
+
+        ##     print(input$colorfactors)
+
+        ## if(input$colorfactors == 'Mesh'){
+            
+        ##     tree <- input$tree
+
+        ##     if(is.null(tree)){
+        ##         colVar=NULL}
+        ##     else{
+        ##         mesh.selection <- unlist(get_selected(tree))
+        ##         mesh.id <- strsplit(mesh.selection,':')[[1]][1]
+        ##         mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
+        ##         colVar <- rep('unlabelled',length(tsne.order))
+        ##         names(colVar) <- tsne.order
+
+        ##         for(label in names(mesh.info)){
+        ##             used.ids <- intersect(tsne.order,mesh.info[[label]])
+        ##             colVar[used.ids] <- label
+        ##         }
+        ##     }
+
+        ## } else
+        ## if(input$colorfactors == 'Gene') {
+
+        ##     colVar <- geneVecResults
+            
+        ## } else{
+
+        colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
+            
+        ## }
+
+        return(colVar)
+        ## }
+    })
+
     tree.dat <- readRDS('data/mesh_tree_flat.RDS')
 
     output$tree <- renderTree(tree.dat)
+
+    output$metadataBar <- renderPlot({
         
+        input$colorButton
+
+        isolate({
+            euclid.file <- input$euclid_input
+            spear.file <- input$spearman_input
+            euclid.pca.file <- input$euclid_pca_input
+            colVarResults <- colVar()
+            dataResults <- data()
+            meshResults <- meshVec()
+            colorFactors <- input$colorfactors
+        })
+
+        if(input$colorButton == 0 | colorFactors == 'No Coloring'){
+            xGroup <- 'All'
+        } else if(colorFactors == 'Mesh'){
+            xGroup <- meshResults
+        } else{
+            xGroup <- colVarResults
+        }
+
+
+        ## labels <- c()
+        ## saveRDS(xGroup,'bar')
+
+
+        labels <- unlist(lapply(xGroup,function(x) strsplit(x,' [+] ')[[1]]))
+        ## for(label in xGroup){
+        ##     label.split <- strsplit(label,' [+] ')[[1]]
+        ##     labels <- c(labels,label.split)
+        ## }
+        ## saveRDS(labels,'foo')
+        ## for(label in unique(xGroup)){
+            
+        ##     label.split <- strsplit(label,' + ')[[1]]
+        ##     labels <- c(labels,label.split)
+
+        ## }
+
+        metadataTable <- table(labels)
+        ## metadataTable <- table(xGroup)
+
+        plot.dat <- data.frame(Label = names(metadataTable), number = as.vector(metadataTable))
+        
+        if(xGroup == 'All'){
+            
+            plot.dat <- data.frame(Label= c('All'), number = c(length(tsne.order)))
+        }
+        
+        output.plot <- ggplot() +
+            geom_bar(data=plot.dat,aes(x=Label,y=number,fill=Label),stat='identity')
+
+        output.plot
+
+    })
+        
+
+    output$violin <- renderPlot({
+
+        input$colorButton
+
+        isolate({
+            euclid.file <- input$euclid_input
+            spear.file <- input$spearman_input
+            euclid.pca.file <- input$euclid_pca_input
+            colVarResults <- violinColVar()
+            dataResults <- data()
+            geneVecResults <- geneVec()
+            meshResults <- meshVec()
+            colorFactors <- input$violinXFactors
+            kmeansVec <- kmeansVec()
+            louvainVec <- louvainVec()
+            selectionRes <- selectionVec()
+        })
+
+        ## plot.dat <- cbind(dataResults,colVarResults)
+        ## colnames(plot.dat) <- c('y1','y2','color')
+
+        if(input$colorButton == 0 | colorFactors == 'No Coloring'){
+            xGroup <- 'All'
+        } else if(colorFactors == 'Mesh'){
+            xGroup <- meshResults
+        } else if(colorFactors == 'KMeans'){
+            xGroup <- kmeansVec
+            ## xGroup <- colVarResults
+            ## xGroup <- colorFactors
+        } else if(colorFactors == 'Louvain'){
+            xGroup <- louvainVec
+        }
+        else{
+            xGroup <- colVarResults
+        }
+        ## if(is.null(xGroup)){
+        ##     yGroup <- NULL
+        ## }
+        ## else{
+        yGroup <- geneVecResults
+        ## }
+
+        ## print(head(names(yGroup)))
+        ## print(head(names(xGroup)))
+
+        if(any(xGroup != 'All')){
+            used.names <- intersect(names(xGroup),names(yGroup))
+            plot.dat <- data.frame(x=as.factor(xGroup[used.names]),y=yGroup[used.names])
+
+            if(!is.null(selectionRes)){
+
+                selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
+
+                plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[selectionRes$samps]))
+
+            }
+        }
+        else{
+            ## used.names <- names(yGroup)
+            plot.dat <- data.frame(x=as.factor(xGroup),y=yGroup)
+
+        }
+
+
+
+        plot.dat <- subset(plot.dat,x != 'unlabelled')
+        ## print(table(xGroup))
+        output.plot <- ggplot() +
+            geom_violin(data=plot.dat,aes(x=x,y=log(y+1),fill=x),scale='width') +
+            geom_jitter(data=plot.dat,aes(x=x,y=log(y+1)),width=0.1,alpha=0.1,colour='gray') +
+            theme(panel.background= element_blank(),
+                  axis.text.x = element_text(size=24,angle=75,vjust=0.5),
+                  axis.text.y = element_text(size=24),
+                  legend.text = element_text(size=24),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_text(size=28),
+                  legend.title = element_blank(),
+                  legend.position='none'
+                  )
+            ## geom_violin(data=dataResults, x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVarResults,text=colVarResults)
+            ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
+            ## config(collaborate=FALSE) %>%
+
+        output.plot
+        
+    })
 
     output$tsne <- renderPlotly({
 
-        euclid.file <- input$euclid_input
-        spear.file <- input$spearman_input
-        euclid.pca.file <- input$euclid_pca_input
+        input$colorButton
 
-        colVar <- NULL
-        ## colVar = NULL
-        ## if(input$genevsgroup == 0){
-        ## }
-
-        ## if(input$genevsgroup == 2){
-        ## if(length(input$colorfactors) == 0){
-            
-        ## }
-        if(length(input$colorfactors) > 0){
-
-            colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
-            
-        }
-        ## }
-
-        ## if(!is.null(spear.file)){
-
-        ##     req <- POST("http://localhost:3000/spearman_distance",body=upload_file(spear.file$datapath,'text/plain'))
-        ##     stop_for_status(req)
-            
-        ##     req.text <- content(req,"text","text/plain")
-
-        ##     con <- textConnection(req.text)
-        ##     dist.vec <- read.table(con,sep='\t',header=T)
-
-        ##     dat.rows <- rownames(data())
-        ##     dat.rows <- gsub('-','.',dat.rows)
-        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
-
-        ##     colVar <- dist.vec[dat.rows,]
-
-        ##     colVar <- order(colVar)
-
-        ##     ## print(min(colVar))
-
-        ##     ## ## colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
-
-        ##     ## print(min(colVar))
-        ## }
-
-        ## if(!is.null(euclid.file)){
-
-        ##     req <- POST("http://localhost:3000/euclid_distance",body=upload_file(euclid.file$datapath,'text/plain'))
-        ##     stop_for_status(req)
-            
-        ##     req.text <- content(req,"text","text/plain")
-
-        ##     con <- textConnection(req.text)
-        ##     dist.vec <- read.table(con,sep='\t',header=T)
-
-        ##     dat.rows <- rownames(data())
-        ##     dat.rows <- gsub('-','.',dat.rows)
-        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
-
-        ##     colVar <- dist.vec[dat.rows,]
-
-        ##     colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
-
-        ##     colVar <- order(colVar)
-
-        ## }
-
-        ## if(!is.null(euclid.pca.file)){
-
-        ##     req <- POST("http://localhost:3000/euclid_pca",body=upload_file(euclid.pca.file$datapath,'text/plain'))
-        ##     stop_for_status(req)
-            
-        ##     req.text <- content(req,"text","text/plain")
-
-        ##     con <- textConnection(req.text)
-        ##     dist.vec <- read.table(con,sep='\t',header=T)
-
-        ##     print(head(dist.vec))
-
-        ##     dat.rows <- rownames(data())
-        ##     dat.rows <- gsub('-','.',dat.rows)
-        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
-
-        ##     colVar <- dist.vec[dat.rows,]
-        ##     ## colVar <- sqrt(colVar)
-        ##     ## colVar <- max(colVar) - colVar
+        isolate({
+            euclid.file <- input$euclid_input
+            spear.file <- input$spearman_input
+            euclid.pca.file <- input$euclid_pca_input
+            colVarResults <- colVar()
+            dataResults <- data()
+            geneVecResults <- geneVec()
+            meshResults <- meshVec()
+            colorFactors <- input$colorfactors
+            kmeansVec <- kmeansVec()
+            louvainVec <- louvainVec()
+            ## input$tree
+            ## input$colorfactors
+        })
 
 
-        ##     colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
-        ##     colVar <- log(colVar)
-        ##     colVar <- 1.01 ^ (max(colVar) - colVar)
-
-        ##     ## colVar <- order(colVar)
-
-        ## }
+        ## print(colorFactors)
         
+        if(input$colorButton == 0 | colorFactors == 'No Coloring'){
+            colVarPlot <- NULL
 
-        ## output.plot <- plot_ly(data(), x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVar,hoverInfo='text',text=colVar) %>%
-        output.plot <- plot_ly(data(), x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVar,text=colVar) %>%
+        } else if(colorFactors == 'Mesh'){
+            colVarPlot <- meshResults
+
+        } else if(colorFactors == 'Gene'){
+            colVarPlot <- geneVecResults
+            
+        } else if(colorFactors == 'KMeans'){
+
+            colVarPlot <- as.factor(kmeansVec[rownames(dataResults)])
+
+        } else if(colorFactors == 'Louvain'){
+            colVarPlot <- as.factor(louvainVec[rownames(dataResults)])
+        }
+        else{
+            colVarPlot <- colVarResults
+        }
+
+
+        ## print(colVarPlot)
+        ## print(typeof(colVarPlot))
+
+        ## print('hello')
+
+        output.plot <- plot_ly(dataResults, x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVarPlot,text=colVarPlot,source='tsne') %>%
             ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
             ## config(collaborate=FALSE) %>%
             layout(dragmode = "pan",xaxis=ax,yaxis=ax) %>%
             toWebGL()
 
         output.plot
+        
+
+        ## output.plot <- plot_ly(data(), x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVar,hoverInfo='text',text=colVar) %>%
     })
 })
 
@@ -336,3 +704,120 @@ shinyServer(function(input,output){
         ##           y = data()[,'y2'],
         ##           col_var = colVar)
                   ## transitions=TRUE)
+
+
+
+
+
+
+### stuff for euclid
+
+        ## colVar <- NULL
+        ## ## colVar = NULL
+        ## ## if(input$genevsgroup == 0){
+        ## ## }
+
+        ## ## if(input$genevsgroup == 2){
+        ## ## if(length(input$colorfactors) == 0){
+            
+        ## ## }
+        ## if(input$colorFactors == 'Mesh'){
+            
+        ##     tree <- input$tree
+
+        ##     if(is.null(tree)){
+        ##         colVar=NULL}
+        ##     else{
+        ##         mesh.selection <- unlist(get_selected(tree))
+        ##         mesh.id <- strsplit(mesh.selection,':')[[1]][1]
+        ##         mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
+        ##         colVar <- rep('unlabelled',length(tsne.order))
+        ##         names(colVar <- tsne.order)
+        ##         for(label in names(mesh.info)){
+        ##             colVar[mesh.info[[label]]] <- label
+        ##         }
+        ##     }
+
+        ## } else if(length(input$colorfactors) > 0){
+
+        ##     colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
+            
+        ## }
+
+        ## }
+
+        ## if(!is.null(spear.file)){
+
+        ##     req <- POST("http://localhost:3000/spearman_distance",body=upload_file(spear.file$datapath,'text/plain'))
+        ##     stop_for_status(req)
+            
+        ##     req.text <- content(req,"text","text/plain")
+
+        ##     con <- textConnection(req.text)
+        ##     dist.vec <- read.table(con,sep='\t',header=T)
+
+        ##     dat.rows <- rownames(data())
+        ##     dat.rows <- gsub('-','.',dat.rows)
+        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
+
+        ##     colVar <- dist.vec[dat.rows,]
+
+        ##     colVar <- order(colVar)
+
+        ##     ## print(min(colVar))
+
+        ##     ## ## colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
+
+        ##     ## print(min(colVar))
+        ## }
+
+        ## if(!is.null(euclid.file)){
+
+        ##     req <- POST("http://localhost:3000/euclid_distance",body=upload_file(euclid.file$datapath,'text/plain'))
+        ##     stop_for_status(req)
+            
+        ##     req.text <- content(req,"text","text/plain")
+
+        ##     con <- textConnection(req.text)
+        ##     dist.vec <- read.table(con,sep='\t',header=T)
+
+        ##     dat.rows <- rownames(data())
+        ##     dat.rows <- gsub('-','.',dat.rows)
+        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
+
+        ##     colVar <- dist.vec[dat.rows,]
+
+        ##     colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
+
+        ##     colVar <- order(colVar)
+
+        ## }
+
+        ## if(!is.null(euclid.pca.file)){
+
+        ##     req <- POST("http://localhost:3000/euclid_pca",body=upload_file(euclid.pca.file$datapath,'text/plain'))
+        ##     stop_for_status(req)
+            
+        ##     req.text <- content(req,"text","text/plain")
+
+        ##     con <- textConnection(req.text)
+        ##     dist.vec <- read.table(con,sep='\t',header=T)
+
+        ##     print(head(dist.vec))
+
+        ##     dat.rows <- rownames(data())
+        ##     dat.rows <- gsub('-','.',dat.rows)
+        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
+
+        ##     colVar <- dist.vec[dat.rows,]
+        ##     ## colVar <- sqrt(colVar)
+        ##     ## colVar <- max(colVar) - colVar
+
+
+        ##     colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
+        ##     colVar <- log(colVar)
+        ##     colVar <- 1.01 ^ (max(colVar) - colVar)
+
+        ##     ## colVar <- order(colVar)
+
+        ## }
