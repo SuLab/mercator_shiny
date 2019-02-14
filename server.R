@@ -47,14 +47,24 @@ shinyServer(function(input,output,session){
     ## gene.choices <- readRDS('data/gene_ids.RDS')
     gene.choices <- readRDS('data/gene_label_vector.RDS')
 
-    kmeans.dat <- readRDS('data/kmeans_1to100_recount_250_dim_noScaled_noProj_over50_noSingle.RDS')
+    kmeans.dat <- readRDS('data/kmeans_1to100_recount_250_dim_noScaled_noProj_over50_noSingle_entrez.RDS')
 
-    louvain.vec <- readRDS('data/louvain_pca_over50_k30.RDS')
+    ## louvain.vec <- readRDS('data/louvain_pca_over50_k30.RDS')
+    ## louvain.vec <- readRDS('data/louvain_pca_over50_k100.RDS')
+    ## louvain.vec <- readRDS('data/tcga_sklearn_louvain.RDS')
+    louvain.vec <- readRDS('data/kmeans_2_louvain_recount_k5_over50.RDS')
+    louvain.choices <- sort(unique(readRDS('data/kmeans_2_louvain_recount_k5_over50.RDS')))
+    louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
+    names(louvain.choices) <- louvain.choices
+    
+    marker.list <- readRDS('data/pairwise_kmeans_k30_marker_list_filtered_noDropouts.RDS')
+    ## marker.list <- readRDS('data/marker_test.RDS')
 
     user.selections <- reactiveValues(
         selection.list = list(),
         selection.datalist = data.frame(),
-        gene.input.results = NULL
+        gene.input.results = NULL,
+        tsne.traces = list(tsne.order)
     )
     
 
@@ -70,6 +80,17 @@ shinyServer(function(input,output,session){
                                       )
                          )
 
+
+    observeEvent(input$kmeansChoice, {
+
+        kmeans.num <- as.integer(input$kmeansChoice)
+
+        updateSelectInput(session,
+                          'barPlotFactor',
+                          label='Bar plot group',
+                          choices=c('All','Selections',sapply(1:kmeans.num,function(x) sprintf('Kmeans Cluster %d',x)),louvain.choices)
+                          )
+    })
 
     selection.getDatalist <- reactive({
 
@@ -88,17 +109,19 @@ shinyServer(function(input,output,session){
         }
     })
 
-
-
     observeEvent(input$saveSelection, {
         
         event.data <- event_data('plotly_selected',source = 'tsne')
 
         if(is.null(event.data) == TRUE) return(NULL)
-        
+
+        curveNumber <- event.data$curveNumber+1
+
         inds <- event.data$pointNumber+1
 
-        user.selections$selection.list[[length(user.selections$selection.list)+1]] <- inds
+        user.selections$selection.list[[length(user.selections$selection.list)+1]] <- user.selections$tsne.traces[[curveNumber[1]]][inds]
+
+        ## user.selections$selection.list[[length(user.selections$selection.list)+1]] <- data.frame(curveNumber,inds)
 
         ## print(length(user.selections$selection.list))
 
@@ -112,6 +135,21 @@ shinyServer(function(input,output,session){
 
     })
 
+
+    output$markerTable <- DT::renderDT({
+
+        dataDT <- DT::datatable(marker.list[[as.double(input$markerGroup)]],
+                                colnames=c('P-val','log fc'),
+                                class='display nowrap',
+                                options = list(
+                                    ## searching=TRUE,
+                                    'lengthChange'=FALSE,
+                                    'info'=FALSE,
+                                    'pagingType'='simple')
+                                )
+
+        return(dataDT)
+    })
 
 
     output$selectionList <- DT::renderDT({
@@ -257,13 +295,19 @@ shinyServer(function(input,output,session){
             entry <- user.selections$selection.list[[rowNum]]
 
             rowLabel <- sprintf('Selection: %s',user.selections$selection.datalist[rowNum,'name'])
-            
-            results <- rbind(results,data.frame(samps=rownames(dataResults)[entry],group=rep(rowLabel,length(entry))))
+
+            ## results <- rbind(results,data.frame(samps = user.selections$tsne.traces[[entry$curveNumber[1]]][entry$inds],group=rep(rowLabel,nrow(entry))))
+
+            results <- rbind(data.frame(samps=entry,group=rep(rowLabel,length(entry))))
+
+            ## results <- rbind(results,data.frame(samps=rownames(dataResults)[entry],group=rep(rowLabel,length(entry))))
 
             ## indVec <- c(indVec,entry)
             ## groupVec <- c(groupVec,rep(rowNum,length(entry)))
 
         }
+
+        
 
         ## return(list(
         ##     indices = rownames(dataResults)[indVec],
@@ -273,6 +317,50 @@ shinyServer(function(input,output,session){
         return(results)
 
     })
+
+    selectionBarVec <- reactive({
+
+        rows <- input$selectionList_rows_selected
+
+        if(is.null(rows)){
+            rows <- 1:length(user.selections$selection.list)
+        }
+
+        indVec <- c()
+        groupVec <- c()
+
+        dataResults <- data()
+
+        results <- data.frame()
+
+        for(rowNum in rows){
+
+            entry <- user.selections$selection.list[[rowNum]]
+
+            rowLabel <- sprintf('Selection: %s',user.selections$selection.datalist[rowNum,'name'])
+
+            ## results <- rbind(results,data.frame(samps = user.selections$tsne.traces[[entry$curveNumber[1]]][entry$inds],group=rep(rowLabel,nrow(entry))))
+
+            results <- rbind(results,data.frame(samps=entry,group=rep(rowLabel,length(entry))))
+
+            ## results <- rbind(results,data.frame(samps=rownames(dataResults)[entry],group=rep(rowLabel,length(entry))))
+
+            ## indVec <- c(indVec,entry)
+            ## groupVec <- c(groupVec,rep(rowNum,length(entry)))
+
+        }
+
+        
+
+        ## return(list(
+        ##     indices = rownames(dataResults)[indVec],
+        ##     groups = groupVec
+        ## ))
+
+        return(results)
+
+    })
+
 
     violinColVar <- reactive({
         colVar <- NULL
@@ -347,6 +435,20 @@ shinyServer(function(input,output,session){
         ## }
     })
 
+    barColVar <- reactive({
+        
+        colVar <- NULL
+        ## if(TRUE){return(colVar)}
+        if(input$colorButton == 0 | input$barPlotXaxis %in% c('No Coloring','Gene','Mesh','KMeans','Louvain')){
+            return(colVar)
+        }
+
+        colVar = apply(data()[,input$barPlotXaxis,drop=FALSE],1,paste,collapse='+')
+            
+        return(colVar)
+
+    })
+
     tree.dat <- readRDS('data/mesh_tree_flat.RDS')
 
     output$tree <- renderTree(tree.dat)
@@ -356,27 +458,43 @@ shinyServer(function(input,output,session){
         input$colorButton
 
         isolate({
-            euclid.file <- input$euclid_input
-            spear.file <- input$spearman_input
-            euclid.pca.file <- input$euclid_pca_input
-            colVarResults <- colVar()
+            ## euclid.file <- input$euclid_input
+            ## spear.file <- input$spearman_input
+            ## euclid.pca.file <- input$euclid_pca_input
+            colVarResults <- barColVar()
             dataResults <- data()
             meshResults <- meshVec()
-            colorFactors <- input$colorfactors
+            barCategory <- input$barPlotXaxis
+            barGroup <- input$barPlotFactor
+            selectionRes <- selectionBarVec()
+            kmeansVec <- kmeansVec()
+            louvainVec <- louvainVec()            
         })
 
-        if(input$colorButton == 0 | colorFactors == 'No Coloring'){
+        if(input$colorButton == 0 | barCategory == 'No Coloring'){
             xGroup <- 'All'
-        } else if(colorFactors == 'Mesh'){
+        } else if(barCategory == 'Mesh'){
             xGroup <- meshResults
         } else{
             xGroup <- colVarResults
         }
 
+        saveRDS(selectionRes,'../../data/tmp/selection.RDS')
 
-        ## labels <- c()
-        ## saveRDS(xGroup,'bar')
+        if(barGroup == 'Selections'){
+            xGroup <- xGroup[as.character(selectionRes$samps)]
 
+        }else if(grepl('Kmeans',barGroup)){
+            kmeans.group <- as.integer(gsub('Kmeans Cluster ','',barGroup))
+            used.samps <- names(which(kmeansVec==kmeans.group))
+            xGroup <- xGroup[as.character(used.samps)]
+
+        }else if(grepl('Louvain',barGroup)){
+            print('allo')
+            louvain.group <- gsub('Louvain Cluster ','',barGroup)
+            used.samps <- names(which(louvainVec==louvain.group))
+            xGroup <- xGroup[as.character(used.samps)]
+        }
 
         labels <- unlist(lapply(xGroup,function(x) strsplit(x,' [+] ')[[1]]))
         ## for(label in xGroup){
@@ -454,6 +572,8 @@ shinyServer(function(input,output,session){
         ## print(head(names(yGroup)))
         ## print(head(names(xGroup)))
 
+        ## saveRDS(selectionRes,'../../data/tmp/selection.RDS')
+
         if(any(xGroup != 'All')){
             used.names <- intersect(names(xGroup),names(yGroup))
             plot.dat <- data.frame(x=as.factor(xGroup[used.names]),y=yGroup[used.names])
@@ -462,7 +582,7 @@ shinyServer(function(input,output,session){
 
                 selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
 
-                plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[selectionRes$samps]))
+                plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
 
             }
         }
@@ -526,25 +646,57 @@ shinyServer(function(input,output,session){
 
         } else if(colorFactors == 'Gene'){
             colVarPlot <- geneVecResults
-            
-        } else if(colorFactors == 'KMeans'){
 
+        } else if(colorFactors == 'KMeans'){
             colVarPlot <- as.factor(kmeansVec[rownames(dataResults)])
 
         } else if(colorFactors == 'Louvain'){
             colVarPlot <- as.factor(louvainVec[rownames(dataResults)])
+
         }
         else{
             colVarPlot <- colVarResults
         }
 
 
+        if(!is.null(colVarPlot) & colorFactors != 'Gene'){
+            
+            i <- 1
+
+            ## isolate({user.selections$tsne.traces <- list()})
+
+            tsne.traces <- list()
+
+            for(label in sort(unique(colVarPlot))){
+
+                inds <- which(colVarPlot == label)
+
+                tsne.traces[[i]] <- rownames(dataResults)[inds]
+                
+                ## print(head(user.selections$tsne.traces[[i]]
+
+                i <- i+1
+            }
+
+            isolate({
+                user.selections$tsne.traces <- tsne.traces
+            })
+
+        }
+        else{
+            isolate({
+                user.selections$tsne.traces <- list(rownames(dataResults))
+            })
+        }
+
         ## print(colVarPlot)
         ## print(typeof(colVarPlot))
 
         ## print('hello')
 
-        output.plot <- plot_ly(dataResults, x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVarPlot,text=colVarPlot,source='tsne') %>%
+        output.plot <- plot_ly(dataResults, x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVarPlot,
+                               text=colVarPlot,
+                               source='tsne') %>%
             ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
             ## config(collaborate=FALSE) %>%
             layout(dragmode = "pan",xaxis=ax,yaxis=ax) %>%

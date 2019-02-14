@@ -34,6 +34,9 @@ names(tsne.choices) <- sapply(tsne.choices,function(x) {
 })
 tsne.choices <- as.list(tsne.choices)
 
+louvain.choices <- sort(unique(readRDS('data/kmeans_2_louvain_recount_k5_over50.RDS')))
+louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
+names(louvain.choices) <- louvain.choices
 
 ## names(tsne.choices) <- tsne.choices
 ## meta.choices <- meta.choices[c('project','tissue_general','tissue_detail','tumor_id','tumor_stage','tumor_sample_type','living','age','sex','ethnicity','extraction_kit','seq_platform','sources')]
@@ -88,7 +91,28 @@ fluidPage(
                                       multiple=FALSE
                                       ),
 
+                          selectInput('barPlotFactor',
+                                      label='Bar plot group',
+                                      ## choices = c('All','Selections','Kmeans Cluster 1',sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))),
+                                      choices = c('All','Selections','Kmeans Cluster 1',louvain.choices),
+                                      multiple=FALSE
+                                      ),
+
+                          selectInput('barPlotXaxis',
+                                      label='X axis for Bar Plot',
+                                      choices=meta.choices,
+                                      multiple=FALSE,
+                                      ),
+
                           shinyTree('tree',theme='proton'),
+                          
+                          selectInput('markerGroup',
+                                      label='KMeans Cluster for markers',
+                                      choices = 1:30,
+                                      multiple=FALSE,
+                                      selected=1),
+
+                          DT::DTOutput('markerTable',width='17%'),
 
                           textInput('selectionName','Selection Name',value=''),
 
@@ -108,12 +132,19 @@ fluidPage(
                                                      plotOutput('violin',width='100%',height='100%')
                                                      )
 
+                                       ),
+                              tabPanel('barPanel',
+                                       absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=105,left='15%',right='auto',bottom='auto',width='85%',height='85%',
+                                                     plotOutput('metadataBar',width='100%',height='100%')
+                                                     )
                                        )
                           )
+                          
                           )
                )
-    
 )
+
+
 
                           
 
