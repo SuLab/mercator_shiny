@@ -3,6 +3,7 @@ library(plotly)
 library(scatterD3)
 library(shinyTree)
 library(DT)
+library(shinyjs)
 
 ## jswidth <-
 ##     '$(document).on("shiny:conntected", function(e) {
@@ -23,126 +24,409 @@ library(DT)
 ## meta.choices <- as.list(names(tsne.y)[5:length(tsne.y)])
 ## names(meta.choices) <- names(tsne.y)[5:length(tsne.y)]
 
-meta.choices <- readRDS('data/metadata_fields.RDS')
-meta.choices <- c('No Coloring',meta.choices,'Mesh','Gene','KMeans','Louvain')
 
-tsne.choices <- readRDS('data/tsne_pca_list_names.RDS')
+
+## meta.choices <- readRDS('data/metadata_fields.RDS')
+meta.choices <- c('No Coloring' = 'No Coloring',
+                  'Project ID' = 'proj_id',
+                  'GTEx/TCGA Gross Tissue' = 'tissue_general',
+                  'GTEx/TCGA Detailed Tissue' = 'tissue_detail',
+                  'Sample Type' = 'sample_type',
+                  'Mesh' = 'Mesh',
+                  'Tissue' = 'Tissue',
+                  'DOID' = 'DOID',
+                  'Gene' = 'Gene',
+                  'Kmeans' = 'KMeans',
+                  'Louvain' = 'Louvain',
+                  'Projection' = 'Projection')
+
+## tsne.choices <- readRDS('data/tsne_pca_list_names.RDS')
 ## tsne.choices <- as.list(tsne.choices.vec)
-names(tsne.choices) <- sapply(tsne.choices,function(x) {
-    y <- strsplit(x,'[.]')[[1]]
-    sprintf('Perplexity = %s, PCs = %s',y[1],y[2])
-})
-tsne.choices <- as.list(tsne.choices)
+## tsne.choices <- names(readRDS('data/recount_tsne_pca_list_noNAs_over50_noSingle_protein_coding.RDS'))
 
-louvain.choices <- sort(unique(readRDS('data/kmeans_2_louvain_recount_k5_over50.RDS')))
+## names(tsne.choices) <- sapply(tsne.choices,function(x) {
+##     y <- strsplit(x,'[.]')[[1]]
+##     sprintf('Perplexity = %s, PCs = %s',y[1],y[2])
+## })
+## tsne.choices <- as.list(tsne.choices)
+
+louvain.vec <- readRDS('data/louvain_vec_pca_over50_noSingle_k100_entrez.RDS')
+louvain.choices <- sort(unique(louvain.vec))
 louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
 names(louvain.choices) <- louvain.choices
 
 ## names(tsne.choices) <- tsne.choices
 ## meta.choices <- meta.choices[c('project','tissue_general','tissue_detail','tumor_id','tumor_stage','tumor_sample_type','living','age','sex','ethnicity','extraction_kit','seq_platform','sources')]
 
+
 fluidPage(
-    titlePanel('Mercator'),
-               fluidRow(
-                   column(2,
-                          h3("Color Controls"),                   
-                          actionButton('colorButton','Redraw Plot'),
-                          
-                          selectInput('whichTSNE',
-                                      label = 'What t-SNE to plot?',
-                                      choices = tsne.choices,
-                                      multiple=FALSE,
-                                      selected=tsne.choices[10]),
+    includeCSS('styles.css'),
+    includeScript('jssrc/panel_click.js'),
+    navbarPage('Mercator',
+               tabPanel('t-SNE',
+                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left=0,right='auto',bottom='auto',width='100%',height='95%',
+                                      plotlyOutput('tsne',width='100%',height='100%')
+                                      )
+                        ),
+               tabPanel('violin',
+                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left=100,right='auto',bottom='auto',width='90%',height='90%',
+                                      plotlyOutput('violin',width='100%',height='100%')
+                                      )
+                        ),
+               ## tabPanel('violin',
+               ##          absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left='10%',right='auto',bottom='auto',width='90%',height='87%',
+               ##                        plotlyOutput('violin',width='100%',height='100%')
+               ##                        )
 
-                          selectizeInput('whichGene',
-                                         label='Select a gene',
-                                         choices=NULL),
+               ##          ),
+               tabPanel('barPanel',
+                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left=0,right='auto',bottom='auto',width='100%',height='85%',
+                                      plotOutput('metadataBar',width='100%',height='100%')
+                                      )
+                        )
+               ),
+    absolutePanel(id='controlPanel', fixed=FALSE, draggable=TRUE, top=60, left=20, right='auto', bottom='auto', width=450, height='auto',
+                  
+                  ## wellPanel(
 
-                          fileInput('gene.vec','Color by euclidian distance to sample',
-                                    accept = c(
-                                        'text/tsv',
-                                        'text/tab-separated-values',
-                                        'text/plain',
-                                        '.tsv')
+                  tags$div(class='panel panel-primary',
+                           tags$div(class='panel-heading',
+                                    
+                                    useShinyjs(),                           
+                                    h3("Plot Controls",class='panel-title'),
+                                    tags$span(class='pull-right clickable',tags$i(class='glyphicon glyphicon-chevron-up'))
                                     ),
+                           tags$div(class='panel-body',
 
-                          ## selectInput('whichGene',
-                          ##             label='Select a gene',
-                          ##             choices = gene.choices,
-                          ##             multiple=FALSE,
-                          ##             selectize=FALSE,
-                          ##             size=10),
+                                    actionButton('colorButton','Redraw Plot'),
+                                    
+                                    ## selectInput('whichTSNE',
+                                    ##             label = 'What t-SNE to plot?',
+                                    ##             choices = tsne.choices,
+                                    ##             multiple=FALSE,
+                                    ##             selected=tsne.choices[10]),
 
-                          selectInput('colorfactors',
-                                      label = 'What to color by?',
-                                      choices = meta.choices,
-                                      multiple=FALSE
-                                      ),
+                                    tags$br(),
+                                    
+                                    selectizeInput('whichGene',
+                                                   label='Select a gene',
+                                                   choices=NULL),
 
-                          selectInput('kmeansChoice',
-                                      label='Choose k for kmeans',
-                                      choices=1:100,
-                                      multiple=FALSE
-                                      ),
+                                    fileInput('gene.vec','Color by euclidian distance to sample',
+                                              accept = c(
+                                                  'text/tsv',
+                                                  'text/tab-separated-values',
+                                                  'text/plain',
+                                                  '.tsv')
+                                              ),
 
-                          selectInput('violinXFactors',
-                                      label= 'Violin X-axis',
-                                      choices = meta.choices,
-                                      multiple=FALSE
-                                      ),
+                                    ## selectInput('whichGene',
+                                    ##             label='Select a gene',
+                                    ##             choices = gene.choices,
+                                    ##             multiple=FALSE,
+                                    ##             selectize=FALSE,
+                                    ##             size=10),
 
-                          selectInput('barPlotFactor',
-                                      label='Bar plot group',
-                                      ## choices = c('All','Selections','Kmeans Cluster 1',sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))),
-                                      choices = c('All','Selections','Kmeans Cluster 1',louvain.choices),
-                                      multiple=FALSE
-                                      ),
+                                    selectInput('colorfactors',
+                                                label = 'What to color by?',
+                                                choices = meta.choices,
+                                                multiple=FALSE
+                                                ),
 
-                          selectInput('barPlotXaxis',
-                                      label='X axis for Bar Plot',
-                                      choices=meta.choices,
-                                      multiple=FALSE,
-                                      ),
+                                    ## selectInput('kmeansChoice',
+                                    ##             label='Choose k for kmeans',
+                                    ##             ## choices=1:100,
+                                    ##             choices=200:400,
+                                    ##             multiple=FALSE
+                                    ##             ),
 
-                          shinyTree('tree',theme='proton'),
-                          
-                          selectInput('markerGroup',
-                                      label='KMeans Cluster for markers',
-                                      choices = 1:30,
-                                      multiple=FALSE,
-                                      selected=1),
+                                    selectInput('violinXFactors',
+                                                label= 'Violin X-axis',
+                                                choices = meta.choices,
+                                                multiple=FALSE
+                                                ),
 
-                          DT::DTOutput('markerTable',width='17%'),
+                                    selectInput('violinYFactors',
+                                                label='Violin Y-axis',
+                                                choices = c('Projection'='projection','Gene'='gene'),
+                                                multiple=FALSE,
+                                                selected=c('Gene'='gene')
+                                                ),
 
-                          textInput('selectionName','Selection Name',value=''),
+                                    selectInput('barPlotFactor',
+                                                label='Bar plot group',
+                                                ## choices = c('All','Selections','Kmeans Cluster 1',sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))),
+                                                choices = c('All','Selections','Kmeans Cluster 1',louvain.choices),
+                                                multiple=FALSE
+                                                ),
 
-                          actionButton('saveSelection','Save Selection'),
+                                    selectInput('barPlotXaxis',
+                                                label='X axis for Bar Plot',
+                                                choices=meta.choices,
+                                                multiple=FALSE
+                                                ),
 
-                          DT::DTOutput('selectionList',width='17%')
-                          ),
-                   column(10,
-                          tabsetPanel(
-                              tabPanel('t-SNE',
-                                       absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=105,left='15%',right='auto',bottom='auto',width='85%',height='95%',
-                                                     plotlyOutput('tsne',width='100%',height='100%')
-                                                     )
-                                       ),
-                              tabPanel('violin',
-                                       absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=105,left='15%',right='auto',bottom='auto',width='85%',height='85%',
-                                                     plotOutput('violin',width='100%',height='100%')
-                                                     )
+                                    shinyTree('meshTree',theme='proton'),
 
-                                       ),
-                              tabPanel('barPanel',
-                                       absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=105,left='15%',right='auto',bottom='auto',width='85%',height='85%',
-                                                     plotOutput('metadataBar',width='100%',height='100%')
-                                                     )
-                                       )
-                          )
-                          
-                          )
-               )
+                                    shinyTree('tissueTree',theme='proton'),
+
+                                    shinyTree('doidTree',theme='proton'),
+                                    
+                                    selectInput('markerGroup',
+                                                label='KMeans Cluster for markers',
+                                                choices = 1:30,
+                                                multiple=FALSE,
+                                                selected=1),
+
+                                    ## textInput('markerSearch','Search Marker Table'),
+                                    
+                                    DT::DTOutput('markerTable',width='300px'),
+
+                                    textInput('selectionName','Selection Name',value=''),
+
+                                    actionButton('saveSelection','Save Selection'),
+
+                                    DT::DTOutput('selectionList',width='17%')
+                                    
+                                    
+                                    )
+                           )
+                  )
 )
+
+## fluidPage(
+##     tags$div(class='outer',
+##              titlePanel('Mercator'),
+##              actionButton('hideButton','',icon=icon('angle-double-up')),
+
+##              tabsetPanel(
+##                  tabPanel('t-SNE',
+##                           absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=150,left='15%',right='auto',bottom='auto',width='85%',height='95%',
+##                                         plotlyOutput('tsne',width='100%',height='100%')
+##                                         )
+##                           ),
+##                  tabPanel('violin',
+##                           absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=150,left='15%',right='auto',bottom='auto',width='85%',height='85%',
+##                                         plotOutput('violin',width='100%',height='100%')
+##                                         )
+
+##                           ),
+##                  tabPanel('barPanel',
+##                           absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=150,left='15%',right='auto',bottom='auto',width='85%',height='85%',
+##                                         plotOutput('metadataBar',width='100%',height='100%')
+##                                         )
+##                           )
+##              ),
+
+
+##              absolutePanel(id='controlPanel', draggable=FALSE, top=80, left = 20, right= 'auto', bottom = 'auto', width=330, height='auto',
+                           
+##                            useShinyjs(),
+##                            ## tags$div(id='controlPanel'),
+
+##                            h3("Color Controls"),
+
+##                            actionButton('colorButton','Redraw Plot'),
+                           
+##                            ## selectInput('whichTSNE',
+##                            ##             label = 'What t-SNE to plot?',
+##                            ##             choices = tsne.choices,
+##                            ##             multiple=FALSE,
+##                            ##             selected=tsne.choices[10]),
+
+##                            selectizeInput('whichGene',
+##                                           label='Select a gene',
+##                                           choices=NULL),
+
+##                            fileInput('gene.vec','Color by euclidian distance to sample',
+##                                      accept = c(
+##                                          'text/tsv',
+##                                          'text/tab-separated-values',
+##                                          'text/plain',
+##                                          '.tsv')
+##                                      ),
+
+##                            ## selectInput('whichGene',
+##                            ##             label='Select a gene',
+##                            ##             choices = gene.choices,
+##                            ##             multiple=FALSE,
+##                            ##             selectize=FALSE,
+##                            ##             size=10),
+
+##                            selectInput('colorfactors',
+##                                        label = 'What to color by?',
+##                                        choices = meta.choices,
+##                                        multiple=FALSE
+##                                        ),
+
+##                            selectInput('kmeansChoice',
+##                                        label='Choose k for kmeans',
+##                                        choices=1:100,
+##                                        multiple=FALSE
+##                                        ),
+
+##                            selectInput('violinXFactors',
+##                                        label= 'Violin X-axis',
+##                                        choices = meta.choices,
+##                                        multiple=FALSE
+##                                        ),
+
+##                            selectInput('violinYFactors',
+##                                        label='Violin Y-axis',
+##                                        choices = c('Projection'='projection','Gene'='gene'),
+##                                        multiple=FALSE,
+##                                        selected=c('Gene'='gene')
+##                                        ),
+
+##                            selectInput('barPlotFactor',
+##                                        label='Bar plot group',
+##                                        ## choices = c('All','Selections','Kmeans Cluster 1',sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))),
+##                                        choices = c('All','Selections','Kmeans Cluster 1',louvain.choices),
+##                                        multiple=FALSE
+##                                        ),
+
+##                            selectInput('barPlotXaxis',
+##                                        label='X axis for Bar Plot',
+##                                        choices=meta.choices,
+##                                        multiple=FALSE
+##                                        ),
+
+##                            shinyTree('tree',theme='proton'),
+                           
+##                            selectInput('markerGroup',
+##                                        label='KMeans Cluster for markers',
+##                                        choices = 1:30,
+##                                        multiple=FALSE,
+##                                        selected=1),
+
+##                            DT::DTOutput('markerTable',width='17%'),
+
+##                            textInput('selectionName','Selection Name',value=''),
+
+##                            actionButton('saveSelection','Save Selection'),
+
+##                            DT::DTOutput('selectionList',width='17%')
+##                            )
+##              )        
+## )
+    
+## fluidPage(
+##     titlePanel('Mercator'),
+##     actionButton('hideButton','',icon=icon('angle-double-up')),
+##     fluidRow(
+##         tags$div(id='controlPanel',
+##                  column(2,
+
+##                         useShinyjs(),
+##                         ## tags$div(id='controlPanel'),
+
+##                         h3("Color Controls"),
+
+##                         actionButton('colorButton','Redraw Plot'),
+                        
+##                         ## selectInput('whichTSNE',
+##                         ##             label = 'What t-SNE to plot?',
+##                         ##             choices = tsne.choices,
+##                         ##             multiple=FALSE,
+##                         ##             selected=tsne.choices[10]),
+
+##                         selectizeInput('whichGene',
+##                                        label='Select a gene',
+##                                        choices=NULL),
+
+##                         fileInput('gene.vec','Color by euclidian distance to sample',
+##                                   accept = c(
+##                                       'text/tsv',
+##                                       'text/tab-separated-values',
+##                                       'text/plain',
+##                                       '.tsv')
+##                                   ),
+
+##                         ## selectInput('whichGene',
+##                         ##             label='Select a gene',
+##                         ##             choices = gene.choices,
+##                         ##             multiple=FALSE,
+##                         ##             selectize=FALSE,
+##                         ##             size=10),
+
+##                         selectInput('colorfactors',
+##                                     label = 'What to color by?',
+##                                     choices = meta.choices,
+##                                     multiple=FALSE
+##                                     ),
+
+##                         selectInput('kmeansChoice',
+##                                     label='Choose k for kmeans',
+##                                     choices=1:100,
+##                                     multiple=FALSE
+##                                     ),
+
+##                         selectInput('violinXFactors',
+##                                     label= 'Violin X-axis',
+##                                     choices = meta.choices,
+##                                     multiple=FALSE
+##                                     ),
+
+##                         selectInput('violinYFactors',
+##                                     label='Violin Y-axis',
+##                                     choices = c('Projection'='projection','Gene'='gene'),
+##                                     multiple=FALSE,
+##                                     selected=c('Gene'='gene')
+##                                     ),
+
+##                         selectInput('barPlotFactor',
+##                                     label='Bar plot group',
+##                                     ## choices = c('All','Selections','Kmeans Cluster 1',sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))),
+##                                     choices = c('All','Selections','Kmeans Cluster 1',louvain.choices),
+##                                     multiple=FALSE
+##                                     ),
+
+##                         selectInput('barPlotXaxis',
+##                                     label='X axis for Bar Plot',
+##                                     choices=meta.choices,
+##                                     multiple=FALSE,
+##                                     ),
+
+##                         shinyTree('tree',theme='proton'),
+                        
+##                         selectInput('markerGroup',
+##                                     label='KMeans Cluster for markers',
+##                                     choices = 1:30,
+##                                     multiple=FALSE,
+##                                     selected=1),
+
+##                         DT::DTOutput('markerTable',width='17%'),
+
+##                         textInput('selectionName','Selection Name',value=''),
+
+##                         actionButton('saveSelection','Save Selection'),
+
+##                         DT::DTOutput('selectionList',width='17%')
+##                         )
+##                  ),
+##         column(10,
+##                tabsetPanel(
+##                    tabPanel('t-SNE',
+##                             absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=150,left='15%',right='auto',bottom='auto',width='85%',height='95%',
+##                                           plotlyOutput('tsne',width='100%',height='100%')
+##                                           )
+##                             ),
+##                    tabPanel('violin',
+##                             absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=150,left='15%',right='auto',bottom='auto',width='85%',height='85%',
+##                                           plotOutput('violin',width='100%',height='100%')
+##                                           )
+
+##                             ),
+##                    tabPanel('barPanel',
+##                             absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=150,left='15%',right='auto',bottom='auto',width='85%',height='85%',
+##                                           plotOutput('metadataBar',width='100%',height='100%')
+##                                           )
+##                             )
+##                )
+               
+##                )
+##     )
+## )
 
 
 
