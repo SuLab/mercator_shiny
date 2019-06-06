@@ -31,7 +31,8 @@ shinyServer(function(input,output,session){
         zeroline = FALSE,
         showline = FALSE,
         showticklabels = FALSE,
-        showgrid = FALSE
+        showgrid = FALSE,
+        range = c(-55,55)
     )
 
     ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex.RDS')
@@ -44,8 +45,9 @@ shinyServer(function(input,output,session){
     ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_over50_noSingle_protein_coding.RDS')
     ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_over50_noSingle_norm_protein_coding.RDS')
     ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_noSingle_protein_coding.RDS')
-    tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_p40.RDS')
+    ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_p40.RDS')
     ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_noSingle.RDS')
+    tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_pc3sd_filteredp40.RDS')
     tsne.data <- tsne.data + matrix(data=rnorm(2*nrow(tsne.data),sd=0.5),ncol=2)    
 
     tsne.order <- rownames(tsne.data)
@@ -68,8 +70,10 @@ shinyServer(function(input,output,session){
     gene.tpm.samps <- readRDS('data/tpm_mat_rownames.RDS')
 
     ## gene.choices <- readRDS('data/gene_ids.RDS')
-    gene.choices <- readRDS('data/gene_label_vector.RDS')
-    gene.num.vec <- readRDS('data/gene_num_vec.RDS')
+    ## gene.choices <- readRDS('data/gene_label_vector.RDS')
+    gene.choices <- readRDS('data/shiny_gene_choice_list.RDS')
+    gene.num.vec <- readRDS('data/shiny_gene_num_vec.RDS')
+    ## gene.num.vec <- readRDS('data/gene_num_vec.RDS')
 
     ## kmeans.dat <- readRDS('data/kmeans_1to100_recount_250_dim_noScaled_noProj_over50_noSingle.RDS')
 
@@ -83,21 +87,38 @@ shinyServer(function(input,output,session){
     ## louvain.vec <- readRDS('data/kmeans_2_louvain_recount_k5_over50.RDS')
     ## louvain.vec <- readRDS('data/louvain_vec_pca_over50_noSingle_k100_entrez.RDS')
     ## louvain.vec <- readRDS('data/louvain_vec_pca_over50_noSingle_k85.RDS')
-    louvain.vec <- readRDS('data/leiden_vec_r25e-3_pca_over50_bulkOnly_k40_sim.RDS')
+    ## louvain.vec <- readRDS('data/leiden_vec_r25e-3_pca_over50_bulkOnly_k40_sim.RDS')
     ## louvain.vec <- readRDS('data/louvain_vec_pca_over50_noSingle_k40_protein_coding.RDS')
+    louvain.vec <- readRDS('data/leiden_pc3sd_r25e-3_vec.RDS')
     louvain.choices <- sort(unique(louvain.vec))
     louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
     names(louvain.choices) <- louvain.choices
 
-    marker.list <- readRDS('data/pairwise_kmeans_k30_marker_list_filtered_noDropouts.RDS')
+    top.clus.per.genes <- readRDS('data/leiden_pc3sd_r25e-3_markers_top_clus.RDS')
+
+    ## marker.list <- readRDS('data/pairwise_kmeans_k30_marker_list_filtered_noDropouts.RDS')
     ## marker.list <- readRDS('data/marker_test.RDS')
+
+    ## cellmarker.gene.info <- readRDS('data/cell_marker_gene_table.RDS')
+    ## cellmarker.gene.info[['p-val']] <- NA
+    ## cellmarker.gene.info[['unique-fcs']] <- NA
+    ## cellmarker.gene.info[['total-fcs']] <- NA
+
+    ## cellmarker.tables <- readRDS('data/gene_groups_tiscellcancer_tables.RDS')
+    ## gene.info <- read.table('data/recount/my_gene_ens_row_info.tsv',sep='\t',stringsAsFactors=F)
+
+    marker.list <- readRDS('data/pairwise_leiden_r25e-3_marker_list_filtered_5th_perc_shiny.RDS')
 
     user.selections <- reactiveValues(
         selection.list = list(),
         selection.datalist = data.frame(),
-        gene.input.results = NULL,
+        gene.input.results = list(),
+        gene.input.datalist = data.frame(),
         tsne.traces = list(tsne.order)
     )
+
+    ## user.inputs <- readtiveValues(
+        
     
     ## selection.list <- list()
     ## selection.datalist <- data.frame()
@@ -112,15 +133,27 @@ shinyServer(function(input,output,session){
                          )
 
 
-    observeEvent(input$kmeansChoice, {
+    ## observeEvent(input$kmeansChoice, {
 
-        kmeans.num <- as.integer(input$kmeansChoice)
+    ##     kmeans.num <- as.integer(input$kmeansChoice)
 
-        updateSelectInput(session,
-                          'barPlotFactor',
-                          label='Bar plot group',
-                          choices=c('All','Selections',sapply(1:kmeans.num,function(x) sprintf('Kmeans Cluster %d',x)),louvain.choices)
-                          )
+    ##     updateSelectInput(session,
+    ##                       'barPlotFactor',
+    ##                       label='Bar plot group',
+    ##                       choices=c('All','Selections',sapply(1:kmeans.num,function(x) sprintf('Kmeans Cluster %d',x)),louvain.choices)
+    ##                       )
+    ## })
+
+    projection.getDatalist <- reactive({
+
+        input$gene.vec
+
+        if(length(user.selections$gene.input.results) == 0){
+            return(data.frame('name'='demo','min'=0))
+        }
+        else{
+            return(user.selections$gene.input.datalist)
+        }
     })
 
     selection.getDatalist <- reactive({
@@ -140,9 +173,9 @@ shinyServer(function(input,output,session){
         }
     })
 
-    observeEvent(input$markerTable_rows_selected, {
+    observeEvent(input$geneTable_rows_selected, {
 
-        selected.marker <- rownames(marker.list[[as.double(input$markerGroup)]])[input$markerTable_rows_selected]
+        selected.marker <- rownames(marker.list[[as.double(input$geneGroup)+1]])[input$geneTable_rows_selected]
 
         ## print(selected.marker)
 
@@ -185,24 +218,66 @@ shinyServer(function(input,output,session){
 
     })
 
+    output$sampleInputTable <- DT::renderDT({
 
-    output$markerTable <- DT::renderDT({
+        datalist <- projection.getDatalist()
 
-        dataDT <- DT::datatable(marker.list[[as.double(input$markerGroup)]],
-                                colnames=c('P-val','log fc'),
-                                class='display nowrap',
+        dataDT <- DT::datatable(datalist,
                                 selection='single',
-                                ## extensions='Responsive',
-                                options = list(
-                                    'searching'=TRUE,
-                                    'lengthChange'=FALSE,
-                                    'info'=FALSE,
-                                    'pagingType'='simple',
-                                    'autoWidth'= TRUE,
-                                    'dom'='<f>rt<p>',
-                                    ## 'columnDefs' = list(list(width='1000px', targets=1)),
-                                    'language'=list('paginate'=list('previous'='&lt;','next'='&gt;')))
+                                options= list(
+                                    searching=FALSE,
+                                    paging=FALSE,
+                                    info=FALSE)
                                 )
+        return(dataDT)
+    })
+                                                                
+    output$geneTable <- DT::renderDT({
+
+        ## dt.inds <- cellmarker.tables[['markers']][[31]]
+
+        ## marker.dat <- marker.list[[31]]
+
+
+        ## ## dt[['p-val']] <- NA
+        ## ## dt[['unique-fcs']] <- NA
+        ## ## dt[['total-fcs']] <- NA
+        ## ## ## dt[['annotation']] <- NA
+
+        ## dt <- cellmarker.gene.info[dt.inds,]
+
+        ## dt[['p-val']] <- marker.dat[['p-val']]
+        ## dt[['unique-fcs']] <- marker.dat[['unique-fcs']]
+        ## dt[['total-fcs']] <- marker.dat[['total-fcs']]
+
+        dt <- marker.list[[as.double(input$geneGroup)+1]]
+
+        dataDT <- DT::datatable(dt,
+                                ## colnames=c('Symbol','ID','ENS_ID','gene-type','tissueType','cancerType','cellType','cellName','cluster p-val','cluster fc','cluster-all fc'),
+                                selection='single',
+                                options=list(
+                                    'searching'=TRUE,
+                                    'legnthChange'=FALSE,
+                                    'info'=FALSE,
+                                    'pagingType'='full',
+                                    'autoWidth'=TRUE)
+                                )
+        
+        ## dataDT <- DT::datatable(marker.list[[as.double(input$markerGroup)+1]][,c(1,2,3,4)],
+        ##                         colnames=c('P-val','unique fc','total fc','annotation'),
+        ##                         class='display nowrap',
+        ##                         selection='single',
+        ##                         ## extensions='Responsive',
+        ##                         options = list(
+        ##                             'searching'=TRUE,
+        ##                             'lengthChange'=FALSE,
+        ##                             'info'=FALSE,
+        ##                             'pagingType'='full',
+        ##                             'autoWidth'= TRUE,
+        ##                             'dom'='<f>rt<p>',
+        ##                             ## 'columnDefs' = list(list(width='1000px', targets=1)),
+        ##                             'language'=list('paginate'=list('previous'='&lt;','next'='&gt;')))
+        ##                         )
 
         return(dataDT)
     })
@@ -211,7 +286,6 @@ shinyServer(function(input,output,session){
     output$selectionList <- DT::renderDT({
 
         datalist <- selection.getDatalist()
-
 
         dataDT <- DT::datatable(datalist,
                                 options = list(
@@ -259,9 +333,7 @@ shinyServer(function(input,output,session){
 
         con <- textConnection(req.text)
         
-        dist.mat <- read.table(con,sep=',',header=F,stringsAsFactors=F,row.names=1)
-
-        progress$set(message='Read results',value=1)
+        dist.mat <- read.table(con,sep=',',header=T,stringsAsFactors=F)
 
         ## print(head(dist.vec))
 
@@ -269,15 +341,24 @@ shinyServer(function(input,output,session){
         ## dat.rows <- gsub('-','.',dat.rows)
         ## dat.rows
 
-        dist.vec <- dist.mat[dat.rows,]
-        names(dist.vec) <- dat.rows
+        dist.mat <- dist.mat[dat.rows,,drop=F]
+        ## rownames(dist.mat) <- dat.rows
 
         ## print(head(dist.vec))
 
         ## print('dist vec')
         ## print(head(dist.vec[dat.rows,]))
 
-        user.selections$gene.input.results <- dist.vec
+        for(col in colnames(dist.mat)){
+            
+            dist.vec <- dist.mat[[col]]
+            names(dist.vec) <- rownames(dist.mat)
+
+            user.selections$gene.input.results[[length(user.selections$gene.input.results)+1]] <- dist.vec
+            user.selections$gene.input.datalist <- rbind(user.selections$gene.input.datalist,data.frame('name'=col,'min'=min(dist.vec)))
+        }
+
+        progress$set(message='Read results',value=1)
 
     })
 
@@ -293,7 +374,7 @@ shinyServer(function(input,output,session){
 
         tsne.y <- cbind(tsne.y,tsne.meta)
 
-        saveRDS(tsne.y,'../../data/tmp/tsne.RDS')
+        ## saveRDS(tsne.y,'../../data/tmp/tsne.RDS')
 
         ## tsne.meta <- as.data.frame(readRDS('data/all_recount_metasra_summarized.RDS'))
         ## tsne.meta <- tsne.meta[rownames(tsne.y),]
@@ -327,7 +408,9 @@ shinyServer(function(input,output,session){
             return(NULL)
         }
         
-        gene.id <- strsplit(input$whichGene,', ')[[1]][3]
+        ## gene.id <- strsplit(input$whichGene,', ')[[1]][3]
+
+        gene.id <- input$whichGene
 
         gene.info <- fromJSON(sprintf('http://localhost:3000/gene_vals/%s',gene.id))
 
@@ -342,7 +425,7 @@ shinyServer(function(input,output,session){
 
         ## gene.info <- gene.info[tsne.order]
 
-        return(log(geneVec+1))
+        return(log2(geneVec+1))
 
     })
         
@@ -391,7 +474,30 @@ shinyServer(function(input,output,session){
         return(colVar)
     })
 
-            
+    efoVec <- reactive({
+
+        tree <- input$efoTree
+
+        if(is.null(tree) | length(get_selected(tree)) == 0){
+            colVar <- NULL
+        } else{
+            efo.selection <- unlist(get_selected(tree))
+            efo.split <- strsplit(efo.selection,':')[[1]]
+            ## efo.id <- paste(efo.split[1],efo.split[2],sep='_')
+            efo.id <- efo.split[1]
+
+            efo.info <- fromJSON(sprintf('http://localhost:3000/efo_info/%s',efo.id))
+            colVar <- rep('unlabelled',length(tsne.order))
+            names(colVar) <- tsne.order
+
+            for(label in names(efo.info)){
+                used.ids <- intersect(tsne.order,efo.info[[label]])
+                colVar[used.ids] <- label
+            }
+        }
+        return(colVar)
+    })
+    
     meshVec <- reactive({
 
         tree <- input$meshTree
@@ -456,6 +562,20 @@ shinyServer(function(input,output,session){
 
     })
 
+    projectionVec <- reactive({
+
+        rows <- input$sampleInputTable_rows_selected
+
+        if(is.null(rows)){
+            return(NULL)
+        }
+
+        entry <- user.selections$gene.input.results[[rows]]
+
+        return(entry)
+
+    })
+
     selectionBarVec <- reactive({
 
         rows <- input$selectionList_rows_selected
@@ -502,7 +622,7 @@ shinyServer(function(input,output,session){
 
     violinColVar <- reactive({
         colVar <- NULL
-        if(input$colorButton == 0 | input$violinXFactors %in% c('No Coloring','Gene','Mesh','Tissue','DOID','KMeans','Louvain','Projection')){
+        if(input$colorButton == 0 | input$violinXFactors %in% c('No Coloring','Gene','Mesh','Tissue','DOID','efo','KMeans','Louvain','Projection')){
             return(colVar)
         }
 
@@ -529,7 +649,7 @@ shinyServer(function(input,output,session){
         
         colVar <- NULL
         ## if(TRUE){return(colVar)}
-        if(input$colorButton == 0 | input$colorfactors %in% c('No Coloring','Gene','Mesh','Tissue','DOID','KMeans','Louvain','Projection')){
+        if(input$colorButton == 0 | input$colorfactors %in% c('No Coloring','Gene','Mesh','Tissue','DOID','efo','KMeans','Louvain','Projection')){
             return(colVar)
         }
 
@@ -580,7 +700,7 @@ shinyServer(function(input,output,session){
         
         colVar <- NULL
         ## if(TRUE){return(colVar)}
-        if(input$colorButton == 0 | input$barPlotXaxis %in% c('No Coloring','Gene','Mesh','Tissue','DOID','KMeans','Louvain','Projection')){
+        if(input$colorButton == 0 | input$barPlotXaxis %in% c('No Coloring','Gene','Mesh','Tissue','DOID','efo','KMeans','Louvain','Projection')){
             return(colVar)
         }
 
@@ -599,6 +719,9 @@ shinyServer(function(input,output,session){
     doid.tree.dat <- readRDS('data/doid_tree_flat.RDS')
     output$doidTree <- renderTree(doid.tree.dat)
 
+    efo.tree.dat <- readRDS('data/efo_tree_flat_pc3sd.RDS')
+    output$efoTree <- renderTree(efo.tree.dat)
+
     output$metadataBar <- renderPlot({
         
         input$colorButton
@@ -612,6 +735,7 @@ shinyServer(function(input,output,session){
             meshResults <- meshVec()
             tissueResults <- tissueVec()
             doidResults <- doidVec()
+            efoResults <- efoVec()
             barCategory <- input$barPlotXaxis
             barGroup <- input$barPlotFactor
             selectionRes <- selectionBarVec()
@@ -626,7 +750,9 @@ shinyServer(function(input,output,session){
         } else if(barCategory == 'Tissue'){
             xGroup <- tissueResults
         } else if(barCategory == 'DOID'){
-            xGroup <- tissueResults
+            xGroup <- doidResults
+        } else if(barCategory == 'efo'){
+            xGroup <- efoResults
         } else{
             xGroup <- colVarResults
         }
@@ -685,8 +811,8 @@ shinyServer(function(input,output,session){
     })
         
 
-    ## output$violin <- renderPlot({
-    output$violin <- renderPlotly({
+    output$violin <- renderPlot({
+    ## output$violin <- renderPlotly({
         input$colorButton
 
         isolate({
@@ -699,12 +825,15 @@ shinyServer(function(input,output,session){
             meshResults <- meshVec()
             tissueResults <- tissueVec()
             doidResults <- doidVec()
+            efoResults <- efoVec()
             colorFactors <- input$violinXFactors
             ## kmeansVec <- kmeansVec()
             louvainVec <- louvainVec()
             selectionRes <- selectionVec()
-            projectionVec <- user.selections$gene.input.results
+            ## projectionVec <- user.selections$gene.input.results
+            projectionVec <- projectionVec()
             yFactors <- input$violinYFactors
+            gene.id <- input$whichGene
         })
 
         ## plot.dat <- cbind(dataResults,colVarResults)
@@ -718,12 +847,15 @@ shinyServer(function(input,output,session){
             xGroup <- tissueResults
         } else if(colorFactors == 'DOID'){
             xGroup <- doidResults
+        } else if(colorFactors == 'efo'){
+            xGroup <- efoResults
         }else if(colorFactors == 'KMeans'){
             xGroup <- kmeansVec
             ## xGroup <- colVarResults
             ## xGroup <- colorFactors
         } else if(colorFactors == 'Louvain'){
             xGroup <- louvainVec
+            
         } else{
             xGroup <- colVarResults
         }
@@ -736,8 +868,15 @@ shinyServer(function(input,output,session){
         
         if(yFactors == 'projection'){
             yGroup <- projectionVec
+            ylabel='Projection'
+            plot.title=''
         } else{
-            yGroup <- log(geneVecResults+1)
+            ## yGroup <- log10(geneVecResults+1)
+            yGroup <- geneVecResults
+            gene.label <- names(gene.choices)[gene.num.vec[gene.id]]
+            ylabel='log2( TPM + 1 )'
+            ## ylabel <- paste('log10( TPM + 1) of ',gene.label,sep='')
+            plot.title=paste('Expression of ',gene.label,sep='')
         }
         ## }
 
@@ -748,21 +887,166 @@ shinyServer(function(input,output,session){
 
         ## print(head(yGroup))
 
-        if(any(xGroup != 'All')){
+        
+        if(colorFactors == 'Louvain'){
+
+            ## if(xGroup=='All'){
+            ##     used.names <- names(yGroup)
+            ## } else{
             used.names <- intersect(names(xGroup),names(yGroup))
-            plot.dat <- data.frame(x=as.factor(xGroup[used.names]),y=yGroup[used.names])
+            ## }
+
+            ## print(top.clus.per.genes[[gene.id]])
+
+            plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
 
             if(!is.null(selectionRes)){
 
                 selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
 
-                plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+                num.selections <- length(unique(selectionRes$group))
 
+                ## plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+
+            } else{
+
+                selectionRes <- data.frame()
+                num.selections <- 0
             }
+
+            top.clusters <- top.clus.per.genes[[gene.id]][1:(length(top.clus.per.genes[[gene.id]])-num.selections)]-1
+
+            ## plot.dat[which(! (plot.dat$x %in% as.character(top.clus.per.genes[[gene.id]][1:(length(top.clus.per.genes[[gene.id]])-num.selections)-1,'x'] <- 'Other'
+            plot.dat[which(! (plot.dat$x %in% as.character(top.clusters))),'x'] <- 'Other'
+
+            plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+
+            sizeVec <- rep(3,nrow(plot.dat))
+            sizeVec[which(plot.dat$x != 'Other')] <- 6
+
+
+        } else if(colorFactors=='tissue_general'){
+
+            used.names <- intersect(names(xGroup),names(yGroup))
+
+            plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
+
+            plot.dat <- subset(plot.dat,x != 'NA')
+
+            if(!is.null(selectionRes)){
+                selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
+            }
+
+            plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+
+            sizeVec <- rep(3,nrow(plot.dat))
+
+        } else if(colorFactors == 'tissue_detail'){
+            
+            used.names <- intersect(names(xGroup),names(yGroup))
+            plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
+
+            plot.dat <- subset(plot.dat,x != 'NA')
+
+            if(!is.null(selectionRes)){
+
+                selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
+
+                num.selections <- length(unique(selectionRes$group))
+
+                ## plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+
+            } else{
+
+                selectionRes <- data.frame()
+                num.selections <- 0
+            }
+
+            sizeVec <- rep(3,nrow(plot.dat))
+
+            group.means <- aggregate(plot.dat[,'y'],list(plot.dat[,'x']),mean)
+            group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
+
+            top.groups <- group.means[1:(13 - num.selections)]
+
+            plot.dat[which(! (plot.dat$x %in% as.character(top.groups))),'x'] <- 'Other'
+
+            plot.dat <- rbind(plot.dat,data.frame(x=as.character(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+            
+            sizeVec[which(plot.dat$x != 'Other')] <- 6
+            
+
         }
-        else{
+        else if(any(xGroup != 'All')){
+
+            used.names <- intersect(names(xGroup),names(yGroup))
+            plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
+
+            labelled.dat <- subset(plot.dat,x != 'unlabelled')
+
+            group.cnts <- table(labelled.dat[,'x'])
+            used.groups <- names(which(group.cnts>(nrow(labelled.dat) / 100)))
+            labelled.dat <- subset(labelled.dat,x %in% used.groups)
+
+            ## print(used.groups)
+            ## print(group.cnts)
+            ## print(nrow(labelled.dat)/20)
+
+            if(!is.null(selectionRes)){
+
+                selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
+
+                num.selections <- length(unique(selectionRes$group))
+
+                ## plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+
+            } else{
+
+                selectionRes <- data.frame()
+                num.selections <- 0
+            }
+
+            sizeVec <- rep(3,nrow(plot.dat))
+
+            if((length(unique(xGroup)) + num.selections) > 10){
+
+                group.means <- aggregate(labelled.dat[,'y'],list(labelled.dat[,'x']),mean)
+                group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
+
+                ## group.means <- group.means[group.means %in% used.groups]
+
+                top.groups <- group.means[1:(10 - num.selections)]
+
+                plot.dat[which(! (plot.dat$x %in% as.character(top.groups))),'x'] <- 'Other'
+
+                ## sizeVec[which(plot.dat$x != 'Other')] <- 8
+            }
+
+            
+            ## else{
+            ##     top.groups <- unique(plot.dat[,'x'])
+            ## }
+
+            plot.dat <- rbind(plot.dat,data.frame(x=as.character(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+            
+            sizeVec[which(plot.dat$x != 'Other' & plot.dat$x != 'unlabelled')] <- 6
+
+ ##            if(colorFactors == 'Louvain'){
+ ##                plot.dat[which(! (plot.dat$x %in% top.clus.per.genes[[gene.id]])),'x'] <- 'Other'
+ ## ## <- subset(plot.dat,x %in% top.clus.per.genes[[gene.id]])
+ ##            }
+
+            ## if(!is.null(selectionRes)){
+
+            ##     selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
+
+            ##     plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+
+            ## }
+        } else{
             ## used.names <- names(yGroup)
             plot.dat <- data.frame(x=as.factor(xGroup),y=yGroup)
+            sizeVec <- rep(3,nrow(plot.dat))            
         }
 
 
@@ -770,44 +1054,57 @@ shinyServer(function(input,output,session){
         ## plot.dat <- subset(plot.dat,x != 'unlabelled')
         ## print(table(xGroup))
 
-        output.plot <- plot.dat %>%
-            plot_ly(x = ~x, y = ~y,split= ~x,type='violin',
-                    ## points='all',
-                    jitter=0.5,
-                    pointpos=0,
-                    box=list(
-                        visible=TRUE),
-                               ## text=~paste('ID: ',run_id,
-                               ##             '<br>Project: ',proj_id,
-                               ##             '<br>Tissue General: ',tissue_general,
-                               ##             '<br>Tissue Detail: ',tissue_detail,
-                               ##             '<br>Sample Type: ',sample_type,
-                               ##             ## '<br>Kmeans: ',KMeans,
-                               ##             '<br>Louvain: ',Louvain,
-                               ##             '<br>Gene: ',Gene,
-                               ##             '<br>Annotation: ',colVarPlot),
-                    marker=list(size=3),
-                    hoveron='points',
-                    source='violin') %>%
-            layout(dragmode='pan') 
-            ## toWebGL()
+        ## output.plot <- plot.dat %>%
+        ##     plot_ly(x = ~x, y = ~y,split= ~x,type='violin',
+        ##             ## points='all',
+        ##             jitter=0.5,
+        ##             pointpos=0,
+        ##             box=list(
+        ##                 visible=TRUE),
+        ##                        ## text=~paste('ID: ',run_id,
+        ##                        ##             '<br>Project: ',proj_id,
+        ##                        ##             '<br>Tissue General: ',tissue_general,
+        ##                        ##             '<br>Tissue Detail: ',tissue_detail,
+        ##                        ##             '<br>Sample Type: ',sample_type,
+        ##                        ##             ## '<br>Kmeans: ',KMeans,
+        ##                        ##             '<br>Louvain: ',Louvain,
+        ##                        ##             '<br>Gene: ',Gene,
+        ##                        ##             '<br>Annotation: ',colVarPlot),
+        ##             marker=list(size=3),
+        ##             hoveron='points',
+        ##             source='violin') %>%
+        ##     layout(dragmode='pan') 
+        ##     ## toWebGL()
 
 
+        x.labels <- gsub("(.{14,}?)\\s","\\1\n",unique(plot.dat$x))
+        names(x.labels) <- unique(plot.dat$x)
 
+        if('Other' %in% x.labels){
+            x.labels <- x.labels[x.labels != 'Other']
+            x.labels <- c(x.labels,'Other'='Other')
+        } else if('unlabelled' %in% x.labels){
+            x.labels <- x.labels[x.labels != 'unlabelled']
+            x.labels <- c(x.labels,'unlabelled'='Unlabelled')
+        }            
 
-        ## output.plot <- ggplot() +
-        ##     geom_violin(data=plot.dat,aes(x=x,y=y,fill=x),scale='width') +
-        ##     geom_jitter(data=plot.dat,aes(x=x,y=y),width=0.1,alpha=0.1,colour='gray') +
-        ##     theme(panel.background= element_blank(),
-        ##           axis.text.x = element_text(size=24,angle=75,vjust=0.5),
-        ##           axis.text.y = element_text(size=24),
-        ##           legend.text = element_text(size=24),
-        ##           axis.title.x = element_blank(),
-        ##           axis.title.y = element_text(size=28),
-        ##           legend.title = element_blank(),
-        ##           legend.position='none'
-        ##           ) +
-        ##     scale_
+        output.plot <- ggplot() +
+            geom_violin(data=plot.dat,aes(x=x,y=y,fill=x),scale='width') +
+            geom_jitter(data=plot.dat,aes(x=x,y=y),width=0.1,alpha=0.1,colour='gray',size=sizeVec) +
+            theme(##panel.background= element_blank(),
+                axis.text.x = element_text(size=14,angle=45,vjust=0.5),
+                axis.text.y = element_text(size=18),
+                axis.title.x = element_blank(),
+                axis.title.y = element_text(size=20),
+                legend.title = element_blank(),
+                legend.position='none',
+                plot.title=element_text(hjust=1.0,size=22)
+                  ) +
+            ylab(ylabel) +
+            ggtitle(plot.title) +
+            scale_x_discrete(labels=x.labels,limits=names(x.labels))
+
+            ## scale_
             ## geom_violin(data=dataResults, x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVarResults,text=colVarResults)
             ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
             ## config(collaborate=FALSE) %>%
@@ -830,10 +1127,12 @@ shinyServer(function(input,output,session){
             meshResults <- meshVec()
             tissueResults <- tissueVec()
             doidResults <- doidVec()
+            efoResults <- efoVec()
             colorFactors <- input$colorfactors
             ## kmeansVec <- kmeansVec()
             louvainVec <- louvainVec()
-            projectionVec <- user.selections$gene.input.results
+            ## projectionVec <- user.selections$gene.input.results
+            projectionVec <- projectionVec()
             ## input$tree
             ## input$colorfactors
         })
@@ -841,7 +1140,9 @@ shinyServer(function(input,output,session){
 
         ## print(colorFactors)
 
-        color.ramp <- c('#800080','#FFFF00')
+        ## color.ramp <- c('#800080','#FFFF00')
+
+        color.ramp <- NULL
         
         if(input$colorButton == 0 | colorFactors == 'No Coloring'){
             colVarPlot <- NULL
@@ -854,6 +1155,9 @@ shinyServer(function(input,output,session){
             
         } else if(colorFactors == 'DOID'){
             colVarPlot <- doidResults
+
+        } else if(colorFactors == 'efo'){
+            colVarPlot <- efoResults
 
         } else if(colorFactors == 'Gene'){
             colVarPlot <- geneVecResults
@@ -935,8 +1239,58 @@ shinyServer(function(input,output,session){
 
         ## print(table(colVarPlot))
 
-        output.plot <- plot_ly(dataResults, x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVarPlot,
+        ## colVarPlot[is.na(colVarPlot)] <- 'unlabelled'
+
+        ## plot.opacity <- rep(1,nrow(dataResults))
+
+        colVarAnnotation <- colVarPlot
+
+        if(typeof(colVarPlot) == 'character'){
+            colVarPlot <- gsub("(.{14,}?)\\s","\\1<br>",colVarPlot)
+        }
+
+        ## if(!is.null(colVarPlot)){
+
+        if(any(colVarPlot == 'NA') | any(colVarPlot == 'unlabelled')){
+
+            colVarPlot[colVarPlot == 'NA'] <- 'unlabelled'
+            colVarAnnotation[colVarAnnotation == 'NA'] <- 'unlabelled'
+            
+            color.ramp <- setNames(colorRampPalette(c("#8DD3C7","#FFFFB3","#BEBADA","#FB8072","#80B1D3","#FDB462","#B3DE69","#FCCDE5","#BC80BD","#CCEBC5","#FFED6F"))(length(unique(colVarPlot))),
+                                   ## colorRampPalette(brewer.pal(12,"Set3"))(length(unique(colVarPlot))),
+                                   sample(unique(colVarPlot)))
+            color.ramp['unlabelled'] <- '#F0F0F0'
+            
+        }
+
+            ## plot.opacity <- rep(1,length(unique(colVarPlot)))
+            ## names(plot.opacity) <- unique(colVarPlot)
+            ## plot.opacity['unlabelled'] <- 0.001
+
+            ## print(plot.opacity)
+
+            ## plot.opacity[which(colVarPlot == 'unlabelled')] <- 0.2
+            
+            ## unlabelledPlot <- which(colVarPlot=='unlabelled')
+            ## labelledPlot <- which(colVarPlot != 'unlabelled')
+        #} ## else{
+        ##     labelledPlot <- 1:nrow(dataResults)
+        ##     unlabelledPlot <- c()
+        ## }
+
+
+        ## print(tail(cbind(plot.opacity,colVarPlot),n=200))
+
+        ## print(length(unlabelledPlot))
+        ## print(length(labelledPlot))
+
+        ## print(length(colVarPlot[labelledPlot]))
+
+        output.plot <- plot_ly(dataResults, x = ~y1, y = ~y2,mode="markers",type='scattergl',color = colVarPlot,
                                colors=color.ramp,
+                               hoverinfo='text',
+                               ## opacity=plot.opacity,
+                               ## group = colVarPlot,
                                text=~paste('ID: ',run_id,
                                            '<br>Project: ',proj_id,
                                            '<br>Tissue General: ',tissue_general,
@@ -945,13 +1299,35 @@ shinyServer(function(input,output,session){
                                            ## '<br>Kmeans: ',KMeans,
                                            '<br>Louvain: ',Louvain,
                                            '<br>Gene: ',Gene,
-                                           '<br>Annotation: ',colVarPlot),
-                               marker = list(size=6),
+                                           '<br>Annotation: ',colVarAnnotation),
+                               marker = list(size=4),
                                source='tsne') %>%
             ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
             ## config(collaborate=FALSE) %>%
-            layout(dragmode = "pan",xaxis=ax,yaxis=ax) %>%
-            toWebGL()
+            layout(dragmode = "pan",
+                   xaxis=ax,
+                   yaxis=ax,
+                   legend=list(font=list(family='sans-serif',size=11))) ## %>%
+            ## toWebGL()
+
+        ## if(length(unlabelledPlot) > 0){
+                   
+        ##     output.plot <- output.plot %>%
+        ##         add_trace(data=dataResults[unlabelledPlot,],x = ~y1, y = ~y2,
+        ##                         text=~paste('ID: ',run_id,
+        ##                                    '<br>Project: ',proj_id,
+        ##                                    '<br>Tissue General: ',tissue_general,
+        ##                                    '<br>Tissue Detail: ',tissue_detail,
+        ##                                    '<br>Sample Type: ',sample_type,
+        ##                                    ## '<br>Kmeans: ',KMeans,
+        ##                                    '<br>Louvain: ',Louvain,
+        ##                                    '<br>Gene: ',Gene,
+        ##                                    '<br>Annotation: ',colVarAnnotation[unlabelledPlot]),
+        ##                   marker = list(size=4),
+        ##                   color='#d3d3d3') ## %>%
+        ##         ## toWebGL()
+
+        ## }
 
         output.plot
         

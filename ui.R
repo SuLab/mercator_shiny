@@ -32,13 +32,16 @@ meta.choices <- c('No Coloring' = 'No Coloring',
                   'GTEx/TCGA Gross Tissue' = 'tissue_general',
                   'GTEx/TCGA Detailed Tissue' = 'tissue_detail',
                   'Sample Type' = 'sample_type',
-                  'Mesh' = 'Mesh',
+                  'Mesh: Anatomy' = 'Mesh',
                   'Tissue' = 'Tissue',
                   'DOID' = 'DOID',
+                  'EFO: Cultured Cells'='efo',
                   'Gene' = 'Gene',
-                  'Kmeans' = 'KMeans',
+                  ## 'Kmeans' = 'KMeans',
                   'Louvain' = 'Louvain',
                   'Projection' = 'Projection')
+
+
 
 ## tsne.choices <- readRDS('data/tsne_pca_list_names.RDS')
 ## tsne.choices <- as.list(tsne.choices.vec)
@@ -50,9 +53,10 @@ meta.choices <- c('No Coloring' = 'No Coloring',
 ## })
 ## tsne.choices <- as.list(tsne.choices)
 
-louvain.vec <- readRDS('data/louvain_vec_pca_over50_noSingle_k100_entrez.RDS')
-louvain.choices <- sort(unique(louvain.vec))
-louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
+louvain.vec <- readRDS('data/leiden_pc3sd_r25e-3_vec.RDS')
+## louvain.vec <- readRDS('data/louvain_vec_pca_over50_noSingle_k100_entrez.RDS')
+naked.louvain.choices <- sort(unique(louvain.vec))
+louvain.choices <- sapply(naked.louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
 names(louvain.choices) <- louvain.choices
 
 ## names(tsne.choices) <- tsne.choices
@@ -69,8 +73,8 @@ fluidPage(
                                       )
                         ),
                tabPanel('violin',
-                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left=100,right='auto',bottom='auto',width='90%',height='90%',
-                                      plotlyOutput('violin',width='100%',height='100%')
+                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=70,left=25,right='auto',bottom='auto',width='97%',height='90%',
+                                      plotOutput('violin',width='100%',height='100%')
                                       )
                         ),
                ## tabPanel('violin',
@@ -85,7 +89,7 @@ fluidPage(
                                       )
                         )
                ),
-    absolutePanel(id='controlPanel', fixed=FALSE, draggable=TRUE, top=60, left=20, right='auto', bottom='auto', width=450, height='auto',
+    absolutePanel(id='controlPanel', fixed=FALSE, draggable=TRUE, top=60, left=20, right='auto', bottom='auto', width=600, height='auto',
                   
                   ## wellPanel(
 
@@ -107,10 +111,11 @@ fluidPage(
                                     ##             selected=tsne.choices[10]),
 
                                     tags$br(),
-                                    
+                                    tags$br(),
                                     selectizeInput('whichGene',
                                                    label='Select a gene',
                                                    choices=NULL),
+
 
                                     fileInput('gene.vec','Color by euclidian distance to sample',
                                               accept = c(
@@ -120,12 +125,17 @@ fluidPage(
                                                   '.tsv')
                                               ),
 
+                                    DT::DTOutput('sampleInputTable',width='300px'),
+
+
                                     ## selectInput('whichGene',
                                     ##             label='Select a gene',
                                     ##             choices = gene.choices,
                                     ##             multiple=FALSE,
                                     ##             selectize=FALSE,
                                     ##             size=10),
+
+                                    tags$br(),
 
                                     selectInput('colorfactors',
                                                 label = 'What to color by?',
@@ -156,7 +166,7 @@ fluidPage(
                                     selectInput('barPlotFactor',
                                                 label='Bar plot group',
                                                 ## choices = c('All','Selections','Kmeans Cluster 1',sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))),
-                                                choices = c('All','Selections','Kmeans Cluster 1',louvain.choices),
+                                                choices = c('All','Selections',louvain.choices),
                                                 multiple=FALSE
                                                 ),
 
@@ -171,22 +181,27 @@ fluidPage(
                                     shinyTree('tissueTree',theme='proton'),
 
                                     shinyTree('doidTree',theme='proton'),
+
+                                    shinyTree('efoTree',theme='proton'),
                                     
-                                    selectInput('markerGroup',
-                                                label='KMeans Cluster for markers',
-                                                choices = 1:30,
-                                                multiple=FALSE,
-                                                selected=1),
 
                                     ## textInput('markerSearch','Search Marker Table'),
                                     
-                                    DT::DTOutput('markerTable',width='300px'),
+
 
                                     textInput('selectionName','Selection Name',value=''),
 
                                     actionButton('saveSelection','Save Selection'),
 
-                                    DT::DTOutput('selectionList',width='17%')
+                                    DT::DTOutput('selectionList',width='17%'),
+
+                                    selectInput('geneGroup',
+                                                label='Cluster # for marker table',
+                                                choices = naked.louvain.choices,
+                                                multiple=FALSE,
+                                                selected=0),
+
+                                    DT::DTOutput('geneTable',width='300px')
                                     
                                     
                                     )
