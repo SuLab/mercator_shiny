@@ -24,8 +24,6 @@ library(shinyjs)
 ## meta.choices <- as.list(names(tsne.y)[5:length(tsne.y)])
 ## names(meta.choices) <- names(tsne.y)[5:length(tsne.y)]
 
-
-
 ## meta.choices <- readRDS('data/metadata_fields.RDS')
 meta.choices <- c('No Coloring' = 'No Coloring',
                   'Project ID' = 'proj_id',
@@ -66,14 +64,14 @@ names(louvain.choices) <- louvain.choices
 fluidPage(
     includeCSS('styles.css'),
     includeScript('jssrc/panel_click.js'),
-    navbarPage('Mercator',
-               tabPanel('t-SNE',
-                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left=0,right='auto',bottom='auto',width='100%',height='95%',
+    navbarPage('Mercator',id='topNavBar',
+               tabPanel('t-SNE',value='tsnePanel',
+                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left=0,right='auto',bottom='auto',width='100%',height='95%',value='tsnePanel',
                                       plotlyOutput('tsne',width='100%',height='100%')
                                       )
                         ),
-               tabPanel('violin',
-                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=70,left=25,right='auto',bottom='auto',width='97%',height='90%',
+               tabPanel('Violin',value='violinPanel',
+                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=70,left=25,right='auto',bottom='auto',width='97%',height='90%',value='violinPanel',
                                       plotOutput('violin',width='100%',height='100%')
                                       )
                         ),
@@ -83,35 +81,94 @@ fluidPage(
                ##                        )
 
                ##          ),
-               tabPanel('barPanel',
-                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left=0,right='auto',bottom='auto',width='100%',height='85%',
+               tabPanel('Bar Plot',value='barPanel',
+                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left=15,right='auto',bottom='auto',width='99%',height='85%',value='barPanel',
                                       plotOutput('metadataBar',width='100%',height='100%')
                                       )
+                        ),
+
+               tabPanel('Gene Table',value='genePanel',
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=72,left=435,right='auto',bottom='auto',width='auto',height='auto',
+                                      tags$label(class='control-label', 'Cluster # for marker table')
+                                      ),
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=42,left=620,right='auto',bottom='auto',width='auto',height='auto',
+                                      selectInput('geneGroup',
+                                                  label='',
+                                                  ## label='Cluster # for marker table',
+                                                  choices = c('All'='all',naked.louvain.choices),
+                                                  multiple=FALSE,
+                                                  selected='All')
+                                      ),
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=62,left=975,right='auto',bottom='auto',width='auto',height='auto',
+                                      downloadButton('geneTableDownload',
+                                                     label = 'Download gene table'
+                                                     )
+                                      ),
+                        absolutePanel(id='results',fixed=FALSE,draggable=FALSE,top=120,left=50,right='auto',bottom='auto',width='99%',height='auto',value='genePanel',
+
+                                    ## DT::DTOutput('geneTable',width='300px')
+                                    DT::DTOutput('geneTable',width='90%')
+                                    )
+                        ),
+
+               tabPanel('Sample Table',value='samplePanel',
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=72,left=435,right='auto',bottom='auto',width='auto',height='auto',
+                                      tags$label(class='control-label', 'Subset data')
+                                      ),
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=42,left=550,right='auto',bottom='auto',width='auto',height='auto',
+                                      selectInput('sampleTableControl',
+                                                  label='',
+                                                  ## label='Cluster # for marker table',
+                                                  choices = c('All','Selection'),
+                                                  multiple=FALSE,
+                                                  selected=0)
+                                      ),
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=62,left=875,right='auto',bottom='auto',width='auto',height='auto',
+                                      downloadButton('sampleTableDownload',
+                                                     label = 'Download sample table'
+                                                     )
+                                      ),
+                        absolutePanel(id='results',fixed=FALSE,draggable=FALSE,top=120,left=50,right='auto',bottom='auto',width='99%',height='auto',
+                                      DT::DTOutput('sampleTable',width='90%')
+                                      )
+                        
                         )
+               ## ),
                ),
-    absolutePanel(id='controlPanel', fixed=FALSE, draggable=TRUE, top=60, left=20, right='auto', bottom='auto', width=600, height='auto',
+    
+    absolutePanel(id='controlPanel', fixed=FALSE, draggable=TRUE, top=60, left=20, right='auto', bottom='auto', width=400, height='auto',
                   
                   ## wellPanel(
 
                   tags$div(class='panel panel-primary',
-                           tags$div(class='panel-heading',
+                           tags$div(class='panel-heading',id='controlPanelHeading',
                                     
                                     useShinyjs(),                           
                                     h3("Plot Controls",class='panel-title'),
-                                    tags$span(class='pull-right clickable',tags$i(class='glyphicon glyphicon-chevron-up'))
+                                    tags$span(class='pull-right clickable',id='controlPanelClickable',tags$i(class='glyphicon glyphicon-chevron-up'))
                                     ),
                            tags$div(class='panel-body',
 
                                     actionButton('colorButton','Redraw Plot'),
                                     
+                                    tags$br(),
+                                    tags$br(),
+
+                                    sliderInput('markerSize','Adjust Marker Size',min=1,max=12,value=4),
+
                                     ## selectInput('whichTSNE',
                                     ##             label = 'What t-SNE to plot?',
                                     ##             choices = tsne.choices,
                                     ##             multiple=FALSE,
                                     ##             selected=tsne.choices[10]),
 
+                                    ## tags$br(),
+                                    ## tags$br(),
+
+                                    uiOutput('plotlyClick'),
+                                    
                                     tags$br(),
-                                    tags$br(),
+
                                     selectizeInput('whichGene',
                                                    label='Select a gene',
                                                    choices=NULL),
@@ -172,7 +229,16 @@ fluidPage(
 
                                     selectInput('barPlotXaxis',
                                                 label='X axis for Bar Plot',
-                                                choices=meta.choices,
+                                                choices=c('No Coloring' = 'No Coloring',
+                                                          'Project ID' = 'proj_id',
+                                                          'GTEx/TCGA Gross Tissue' = 'tissue_general',
+                                                          'GTEx/TCGA Detailed Tissue' = 'tissue_detail',
+                                                          'Sample Type' = 'sample_type',
+                                                          'Mesh: Anatomy' = 'Mesh',
+                                                          'Tissue' = 'Tissue',
+                                                          'DOID' = 'DOID',
+                                                          'EFO: Cultured Cells'='efo',
+                                                          'Louvain' = 'Louvain'),
                                                 multiple=FALSE
                                                 ),
 
@@ -187,21 +253,19 @@ fluidPage(
 
                                     ## textInput('markerSearch','Search Marker Table'),
                                     
-
-
                                     textInput('selectionName','Selection Name',value=''),
 
                                     actionButton('saveSelection','Save Selection'),
 
-                                    DT::DTOutput('selectionList',width='17%'),
+                                    DT::DTOutput('selectionList',width='17%')
 
-                                    selectInput('geneGroup',
-                                                label='Cluster # for marker table',
-                                                choices = naked.louvain.choices,
-                                                multiple=FALSE,
-                                                selected=0),
+                                    ## selectInput('geneGroup',
+                                    ##             label='Cluster # for marker table',
+                                    ##             choices = naked.louvain.choices,
+                                    ##             multiple=FALSE,
+                                    ##             selected=0),
 
-                                    DT::DTOutput('geneTable',width='300px')
+                                    ## DT::DTOutput('geneTable',width='300px')
                                     
                                     
                                     )
