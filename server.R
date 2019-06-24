@@ -7,13 +7,16 @@ library(stats)
 library(shiny)
 library(scales)
 library(plotly)
-library(scatterD3)
+## library(scatterD3)
 library(httr)
 library(shinyTree)
 library(jsonlite)
 library(DT)
 library(shinyjs)
 library(stringr)
+library(parallel)
+library(DBI)
+library(odbc)
 
 ## lasso2d = '{
 ##     name: 'lasso2d',
@@ -35,18 +38,8 @@ shinyServer(function(input,output,session){
         range = c(-55,55)
     )
 
-    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex_fewer_genes.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_750dim_list_noNAs_over50_noSingle_mygene_entrez.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_over50_noSingle_entrez.RDS')[['40.250']]
-    ## tsne.data <- readRDS('data/recount_tsne_pca_750dim_list_noNAs_over50_noSingle_protein_mirna.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_over50_noSingle_protein_mirna.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_over50_noSingle_protein_coding.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_over50_noSingle_norm_protein_coding.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_noSingle_protein_coding.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_p40.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_noSingle.RDS')
+    mercator.db.con <- dbConnect(odbc(),'PostgreSQL')
+
     tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_pc3sd_filteredp40.RDS')
     tsne.data <- tsne.data + matrix(data=rnorm(2*nrow(tsne.data),sd=0.5),ncol=2)    
 
@@ -75,26 +68,8 @@ shinyServer(function(input,output,session){
 
     gene.tpm.samps <- readRDS('data/tpm_mat_rownames.RDS')
 
-    ## gene.choices <- readRDS('data/gene_ids.RDS')
-    ## gene.choices <- readRDS('data/gene_label_vector.RDS')
     gene.choices <- readRDS('data/shiny_gene_choice_list.RDS')
     gene.num.vec <- readRDS('data/shiny_gene_num_vec.RDS')
-    ## gene.num.vec <- readRDS('data/gene_num_vec.RDS')
-
-    ## kmeans.dat <- readRDS('data/kmeans_1to100_recount_250_dim_noScaled_noProj_over50_noSingle.RDS')
-
-    ## kmeans.dat <- readRDS('data/kmeans_1to100_recount_750_dmi_noProj_over50_noSingle.RDS')
-    ## kmeans.dat <- readRDS('data/kmeans_200to400_recount_750_dim_noProj_over50_noSingle.RDS')
-    ## kmeans.dat <- readRDS('data/kmeans_200to400_recount_750_dim_noProj_over50_bulkOnly.RDS')
-
-    ## louvain.vec <- readRDS('data/louvain_pca_over50_k30.RDS')
-    ## louvain.vec <- readRDS('data/louvain_pca_over50_k100.RDS')
-    ## louvain.vec <- readRDS('data/tcga_sklearn_louvain.RDS')
-    ## louvain.vec <- readRDS('data/kmeans_2_louvain_recount_k5_over50.RDS')
-    ## louvain.vec <- readRDS('data/louvain_vec_pca_over50_noSingle_k100_entrez.RDS')
-    ## louvain.vec <- readRDS('data/louvain_vec_pca_over50_noSingle_k85.RDS')
-    ## louvain.vec <- readRDS('data/leiden_vec_r25e-3_pca_over50_bulkOnly_k40_sim.RDS')
-    ## louvain.vec <- readRDS('data/louvain_vec_pca_over50_noSingle_k40_protein_coding.RDS')
     louvain.vec <- readRDS('data/leiden_pc3sd_r25e-3_vec.RDS')
     louvain.choices <- sort(unique(louvain.vec))
     louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
@@ -102,16 +77,6 @@ shinyServer(function(input,output,session){
 
     top.clus.per.genes <- readRDS('data/leiden_pc3sd_r25e-3_markers_top_clus.RDS')
 
-    ## marker.list <- readRDS('data/pairwise_kmeans_k30_marker_list_filtered_noDropouts.RDS')
-    ## marker.list <- readRDS('data/marker_test.RDS')
-
-    ## cellmarker.gene.info <- readRDS('data/cell_marker_gene_table.RDS')
-    ## cellmarker.gene.info[['p-val']] <- NA
-    ## cellmarker.gene.info[['unique-fcs']] <- NA
-    ## cellmarker.gene.info[['total-fcs']] <- NA
-
-    ## cellmarker.tables <- readRDS('data/gene_groups_tiscellcancer_tables.RDS')
-    ## gene.info <- read.table('data/recount/my_gene_ens_row_info.tsv',sep='\t',stringsAsFactors=F)
 
     marker.list <- readRDS('data/pairwise_leiden_r25e-3_marker_list_filtered_5th_perc_shiny.RDS')
 
@@ -126,11 +91,6 @@ shinyServer(function(input,output,session){
         previous.tab = 't-SNE'
     )
 
-    ## user.inputs <- readtiveValues(
-        
-    
-    ## selection.list <- list()
-    ## selection.datalist <- data.frame()
 
     updateSelectizeInput(session,
                          'whichGene',
@@ -142,16 +102,6 @@ shinyServer(function(input,output,session){
                          )
 
 
-    ## observeEvent(input$kmeansChoice, {
-
-    ##     kmeans.num <- as.integer(input$kmeansChoice)
-
-    ##     updateSelectInput(session,
-    ##                       'barPlotFactor',
-    ##                       label='Bar plot group',
-    ##                       choices=c('All','Selections',sapply(1:kmeans.num,function(x) sprintf('Kmeans Cluster %d',x)),louvain.choices)
-    ##                       )
-    ## })
 
     projection.getDatalist <- reactive({
 
@@ -292,21 +242,6 @@ shinyServer(function(input,output,session){
                                                                 
     output$geneTable <- DT::renderDT({
 
-        ## dt.inds <- cellmarker.tables[['markers']][[31]]
-
-        ## marker.dat <- marker.list[[31]]
-
-
-        ## ## dt[['p-val']] <- NA
-        ## ## dt[['unique-fcs']] <- NA
-        ## ## dt[['total-fcs']] <- NA
-        ## ## ## dt[['annotation']] <- NA
-
-        ## dt <- cellmarker.gene.info[dt.inds,]
-
-        ## dt[['p-val']] <- marker.dat[['p-val']]
-        ## dt[['unique-fcs']] <- marker.dat[['unique-fcs']]
-        ## dt[['total-fcs']] <- marker.dat[['total-fcs']]
 
         if(input$geneGroup == 'all'){
             dt <- marker.list[['all']]
@@ -325,21 +260,6 @@ shinyServer(function(input,output,session){
                                     'pageLength'=25)
                                 )
         
-        ## dataDT <- DT::datatable(marker.list[[as.double(input$markerGroup)+1]][,c(1,2,3,4)],
-        ##                         colnames=c('P-val','unique fc','total fc','annotation'),
-        ##                         class='display nowrap',
-        ##                         selection='single',
-        ##                         ## extensions='Responsive',
-        ##                         options = list(
-        ##                             'searching'=TRUE,
-        ##                             'lengthChange'=FALSE,
-        ##                             'info'=FALSE,
-        ##                             'pagingType'='full',
-        ##                             'autoWidth'= TRUE,
-        ##                             'dom'='<f>rt<p>',
-        ##                             ## 'columnDefs' = list(list(width='1000px', targets=1)),
-        ##                             'language'=list('paginate'=list('previous'='&lt;','next'='&gt;')))
-        ##                         )
 
         return(dataDT)
     })
@@ -390,6 +310,11 @@ shinyServer(function(input,output,session){
         if(input$sampleTableControl == 'Selection'){
             dt <- dt[selectionRes$samps,]
             dt$group <- selectionRes$group
+        ## } else if('Louvain' %in% input$sampleTableControl){
+        } else if(grepl('Louvain',input$sampleTableControl)){
+            louvain.id <- gsub('Louvain Cluster ','',input$sampleTableControl)
+
+            dt <- subset(dt,Louvain==as.numeric(louvain.id))
         }
 
         rownames(dt) <- c()
@@ -413,11 +338,6 @@ shinyServer(function(input,output,session){
                                     paging = FALSE,
                                     info = FALSE)
                                 )
-        
-        ## print(datalist)
-        ## print(selection.list)
-
-        ## return(datalist)
         return(dataDT)
     })
 
@@ -448,42 +368,69 @@ shinyServer(function(input,output,session){
 
     observeEvent(input$gene.vec, {
 
+        getDistance <- function(x,gene.vec) {
+
+            eu.dist <- sum((x - gene.vec)^2)
+
+            ## eu.dist <- (x %*% gene.vec) / (norm(x,'2') * norm(gene.vec,'2'))
+
+            return(eu.dist)
+
+        }
+
+
         progress <- shiny::Progress$new()
+
         on.exit(progress$close())
 
         progress$set(message='Calculating...', value=0.33)
 
         ## saveRDS(input$gene.vec,'../../data/tmp/input.RDS')
 
-        req <- POST('http://localhost:3000/euclid_pca',body=upload_file(input$gene.vec$datapath,'text/plain'))
+        map.dat <- readRDS('data/recount_750_dim_noProj_over50_bulkOnly_pc3sd_filtered.RDS')
+        rotation.dat <- readRDS('data/recount_all_big_irlba_750_over50_bulkOnly_pc3sd_filtered_rotmat.RDS')
+        map.centers <- readRDS('data/recount_over50_bulkOnly_pc3sd_filtered_colparams.RDS')
+        map.centers <- subset(map.centers,vars>0)
+
+        gene.dat <- read.table(input$gene.vec$datapath,sep='\t',header=T)
+        gene.dat <- gene.dat[rownames(map.centers),,drop=F]
+
+        dist.mat <- matrix(0,nrow=nrow(map.dat),ncol=ncol(gene.dat))
+        rownames(dist.mat) <- rownames(map.dat)
+        colnames(dist.mat) <- colnames(gene.dat)
+
+        no_cores <- detectCores() - 1
+        cl <- makeCluster(no_cores)
+
+        for(col in colnames(gene.dat)){
+    
+
+            gene.vec <- gene.dat[[col]]
+            names(gene.vec) <- rownames(gene.dat)
+
+            center.vec <- gene.vec - map.centers$means
+            center.vec <- center.vec / map.centers$vars
+
+            rot.vec <- t(center.vec) %*% rotation.dat
+
+            dist.vec <- parApply(cl,map.dat,1,getDistance,gene.vec=rot.vec)
+
+            dist.mat[,col] <- dist.vec
+        }
+
+        stopCluster(cl)
 
         progress$set(message='Calculated', value=0.67)
 
-        stop_for_status(req)
-
-        req.text <- content(req,'text','text/plain')
-
-        con <- textConnection(req.text)
-        
-        dist.mat <- read.table(con,sep=',',header=T,stringsAsFactors=F)
-
-        ## print(head(dist.vec))
 
         dat.rows <- rownames(data())
-        ## dat.rows <- gsub('-','.',dat.rows)
-        ## dat.rows
 
         dist.mat <- dist.mat[dat.rows,,drop=F]
-        ## rownames(dist.mat) <- dat.rows
-
-        ## print(head(dist.vec))
-
-        ## print('dist vec')
-        ## print(head(dist.vec[dat.rows,]))
 
         for(col in colnames(dist.mat)){
-            
-            dist.vec <- dist.mat[[col]]
+
+            ## dist.vec <- dist.mat[[col]]
+            dist.vec <- dist.mat[,col]
             names(dist.vec) <- rownames(dist.mat)
 
             user.selections$gene.input.results[[length(user.selections$gene.input.results)+1]] <- dist.vec
@@ -496,38 +443,11 @@ shinyServer(function(input,output,session){
 
 
     data <- reactive({
-        ## tsne.data <- readRDS('data/recount_tsne.RDS')
-        ## tsne.data <- readRDS('data/recount_tsne_pca_list_noNAs_tcgagtex.RDS')
-        ## tsne.y <- data.frame(y1=tsne.data$Y[,1],y2=tsne.data$Y[,2])
-
-        ## tsne.y <- data.frame(tsne.data[[input$whichTSNE]])
         tsne.y <- data.frame(tsne.data)
         colnames(tsne.y) <- c('y1','y2')
 
         tsne.y <- cbind(tsne.y,tsne.meta)
 
-        ## saveRDS(tsne.y,'../../data/tmp/tsne.RDS')
-
-        ## tsne.meta <- as.data.frame(readRDS('data/all_recount_metasra_summarized.RDS'))
-        ## tsne.meta <- tsne.meta[rownames(tsne.y),]
-
-        ## tsne.y <- cbind(tsne.y,tsne.meta)
-        ## creates extra datapoints
-        ## rownames(tsne.y) <- NULL
-
-        ## mod.y <- tsne.y
-
-        ## for(i in 1:4){
-        ##     mod.y$y1 <- runif(nrow(mod.y),-60,60)
-        ##     mod.y$y2 <- runif(nrow(mod.y),-60,60)
-
-        ##     tsne.y <- rbind(tsne.y,mod.y)
-        ## }
-        
-        ## tsne.y$tissue_detail[unlist(sapply(tsne.y$tissue_detail,function(x) !grepl("Adenocarcinoma",x)))] <- "NA"
-        ## tsne.y$tissue_general[tsne.y$tissue_general != "hESC"] <- "NA"
-
-        ## return(tsne.y)
         return(tsne.y)
     })
 
@@ -536,7 +456,8 @@ shinyServer(function(input,output,session){
 
         ## geneVec <- NULL
 
-        if(input$whichGene == ''){
+        ## if(input$whichGene == ''){
+        if(TRUE){
             return(NULL)
         }
         
@@ -559,7 +480,6 @@ shinyServer(function(input,output,session){
 
         ## return(geneVec)
         return(geneVec)
-
     })
         
 
@@ -572,7 +492,11 @@ shinyServer(function(input,output,session){
         } else{
             tissue.selection <- unlist(get_selected(tree))
             tissue.id <- strsplit(tissue.selection,':')[[1]][1]
-            tissue.info <- fromJSON(sprintf('http://localhost:3000/tissue_info/%s',tissue.id))
+            ## tissue.info <- fromJSON(sprintf('http://localhost:3000/tissue_info/%s',tissue.id))
+
+            tissue.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM tissue_tree WHERE id='%s'",tissue.id)))
+            tissue.info <- fromJSON(tissue.req$termtree)
+            
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
 
@@ -595,7 +519,10 @@ shinyServer(function(input,output,session){
             doid.split <- strsplit(doid.selection,':')[[1]]
             doid.id <- paste(doid.split[1],doid.split[2],sep='_')
 
-            doid.info <- fromJSON(sprintf('http://localhost:3000/doid_info/%s',doid.id))
+            doid.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM doid_dat WHERE id='%s'",doid.id)))
+
+            ## doid.info <- fromJSON(sprintf('http://localhost:3000/doid_info/%s',doid.id))
+            doid.info <- fromJSON(doid.req$termtree)
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
 
@@ -619,7 +546,10 @@ shinyServer(function(input,output,session){
             ## efo.id <- paste(efo.split[1],efo.split[2],sep='_')
             efo.id <- efo.split[1]
 
-            efo.info <- fromJSON(sprintf('http://localhost:3000/efo_info/%s',efo.id))
+            efo.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM efo_tree WHERE id='%s'",efo.id)))
+            efo.info <- fromJSON(efo.req$termtree)
+
+            ## efo.info <- fromJSON(sprintf('http://localhost:3000/efo_info/%s',efo.id))
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
 
@@ -640,7 +570,11 @@ shinyServer(function(input,output,session){
         } else{
             mesh.selection <- unlist(get_selected(tree))
             mesh.id <- strsplit(mesh.selection,':')[[1]][1]
-            mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
+            ## mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
+
+            mesh.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM mesh_tree WHERE id='%s'",mesh.id)))
+            mesh.info <- fromJSON(mesh.req$termtree)
+            
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
 
@@ -673,24 +607,11 @@ shinyServer(function(input,output,session){
 
             rowLabel <- sprintf('Selection: %s',user.selections$selection.datalist[rowNum,'name'])
 
-            ## results <- rbind(results,data.frame(samps = user.selections$tsne.traces[[entry$curveNumber[1]]][entry$inds],group=rep(rowLabel,nrow(entry))))
-
-            ## results <- rbind(data.frame(samps=entry,group=rep(rowLabel,length(entry))))
             results <- rbind(results,data.frame(samps=entry,group=rep(rowLabel,length(entry)),stringsAsFactors=F))
 
-            ## results <- rbind(results,data.frame(samps=rownames(dataResults)[entry],group=rep(rowLabel,length(entry))))
-
-            ## indVec <- c(indVec,entry)
-            ## groupVec <- c(groupVec,rep(rowNum,length(entry)))
 
         }
 
-        
-
-        ## return(list(
-        ##     indices = rownames(dataResults)[indVec],
-        ##     groups = groupVec
-        ## ))
 
         return(results)
 
@@ -731,23 +652,14 @@ shinyServer(function(input,output,session){
 
             rowLabel <- sprintf('Selection: %s',user.selections$selection.datalist[rowNum,'name'])
 
-            ## results <- rbind(results,data.frame(samps = user.selections$tsne.traces[[entry$curveNumber[1]]][entry$inds],group=rep(rowLabel,nrow(entry))))
 
             results <- rbind(results,data.frame(samps=entry,group=rep(rowLabel,length(entry))))
 
-            ## results <- rbind(results,data.frame(samps=rownames(dataResults)[entry],group=rep(rowLabel,length(entry))))
-
-            ## indVec <- c(indVec,entry)
-            ## groupVec <- c(groupVec,rep(rowNum,length(entry)))
 
         }
 
         
 
-        ## return(list(
-        ##     indices = rownames(dataResults)[indVec],
-        ##     groups = groupVec
-        ## ))
 
         return(results)
 
@@ -786,41 +698,6 @@ shinyServer(function(input,output,session){
         if(input$colorButton == 0 | input$colorfactors %in% c('No Coloring','Gene','Mesh','Tissue','DOID','efo','KMeans','Louvain','Projection')){
             return(colVar)
         }
-
-        ## geneVecResults <- geneVec()
-
-        ## if(length(input$colorfactors) > 0){
-
-        ##     print(input$colorfactors)
-
-        ## if(input$colorfactors == 'Mesh'){
-            
-        ##     tree <- input$tree
-
-        ##     if(is.null(tree)){
-        ##         colVar=NULL}
-        ##     else{
-        ##         mesh.selection <- unlist(get_selected(tree))
-        ##         mesh.id <- strsplit(mesh.selection,':')[[1]][1]
-        ##         mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
-        ##         colVar <- rep('unlabelled',length(tsne.order))
-        ##         names(colVar) <- tsne.order
-
-        ##         for(label in names(mesh.info)){
-        ##             used.ids <- intersect(tsne.order,mesh.info[[label]])
-        ##             colVar[used.ids] <- label
-        ##         }
-        ##     }
-
-        ## } else
-        ## if(input$colorfactors == 'Gene') {
-
-        ##     colVar <- geneVecResults
-            
-        ## } else{
-
-        ## print(input$colorfactors)
-        ## print(colnames(data()))
 
         colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
             
@@ -1035,17 +912,6 @@ shinyServer(function(input,output,session){
 
         ## labels <- unlist(lapply(xGroup,function(x) strsplit(x,' [+] ')[[1]]))
         labels <- xGroup
-        ## for(label in xGroup){
-        ##     label.split <- strsplit(label,' [+] ')[[1]]
-        ##     labels <- c(labels,label.split)
-        ## }
-        ## saveRDS(labels,'foo')
-        ## for(label in unique(xGroup)){
-            
-        ##     label.split <- strsplit(label,' + ')[[1]]
-        ##     labels <- c(labels,label.split)
-
-        ## }
 
         plot.title <- ''
 
@@ -1064,13 +930,6 @@ shinyServer(function(input,output,session){
 
         plot.dat <- data.frame(Label = names(metadataTable), number = as.vector(metadataTable),stringsAsFactors=F)
 
-        ## print(head(xGroup))
-
-        ## if(xGroup[1] == 'All'){
-        ##     plot.dat <- data.frame(Label= c('All'), number = c(length(tsne.order)),stringsAsFactors=F)
-        ## }
-
-        ## table(plot.dat$Label)
 
         plot.dat$Label[plot.dat$Label=='NA'] <- 'unlabelled'
 
@@ -1177,14 +1036,6 @@ shinyServer(function(input,output,session){
             ## ylabel <- paste('log10( TPM + 1) of ',gene.label,sep='')
             plot.title=paste('Expression of ',gene.label,sep='')
         }
-        ## }
-
-        ## print(head(names(yGroup)))
-        ## print(head(names(xGroup)))
-
-        ## saveRDS(selectionRes,'../../data/tmp/selection.RDS')
-
-        ## print(head(yGroup))
 
         
         if(any(xGroup == 'All')){
@@ -1305,9 +1156,6 @@ shinyServer(function(input,output,session){
             used.groups <- names(which(group.cnts>(nrow(labelled.dat) / 100)))
             labelled.dat <- subset(labelled.dat,x %in% used.groups)
 
-            ## print(used.groups)
-            ## print(group.cnts)
-            ## print(nrow(labelled.dat)/20)
 
             if(!is.null(selectionRes)){
 
@@ -1345,59 +1193,14 @@ shinyServer(function(input,output,session){
             }
 
             
-            ## else{
-            ##     top.groups <- unique(plot.dat[,'x'])
-            ## }
 
             plot.dat <- rbind(plot.dat,data.frame(x=as.character(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
             
             sizeVec[which(plot.dat$x != 'Other' & plot.dat$x != 'unlabelled')] <- 5
 
- ##            if(colorFactors == 'Louvain'){
- ##                plot.dat[which(! (plot.dat$x %in% top.clus.per.genes[[gene.id]])),'x'] <- 'Other'
- ## ## <- subset(plot.dat,x %in% top.clus.per.genes[[gene.id]])
- ##            }
-
-            ## if(!is.null(selectionRes)){
-
-            ##     selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
-
-            ##     plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
-
-            ## }
-        } ## else{
-        ##     ## used.names <- names(yGroup)
-        ##     plot.dat <- data.frame(x=as.factor(xGroup),y=yGroup)
-        ##     sizeVec <- rep(3,nrow(plot.dat))
-        ##     top.groups <- NULL
-        ## }
+        } 
 
 
-
-        ## plot.dat <- subset(plot.dat,x != 'unlabelled')
-        ## print(table(xGroup))
-
-        ## output.plot <- plot.dat %>%
-        ##     plot_ly(x = ~x, y = ~y,split= ~x,type='violin',
-        ##             ## points='all',
-        ##             jitter=0.5,
-        ##             pointpos=0,
-        ##             box=list(
-        ##                 visible=TRUE),
-        ##                        ## text=~paste('ID: ',run_id,
-        ##                        ##             '<br>Project: ',proj_id,
-        ##                        ##             '<br>Tissue General: ',tissue_general,
-        ##                        ##             '<br>Tissue Detail: ',tissue_detail,
-        ##                        ##             '<br>Sample Type: ',sample_type,
-        ##                        ##             ## '<br>Kmeans: ',KMeans,
-        ##                        ##             '<br>Louvain: ',Louvain,
-        ##                        ##             '<br>Gene: ',Gene,
-        ##                        ##             '<br>Annotation: ',colVarPlot),
-        ##             marker=list(size=3),
-        ##             hoveron='points',
-        ##             source='violin') %>%
-        ##     layout(dragmode='pan') 
-        ##     ## toWebGL()
 
 
         x.labels <- gsub("(.{14,}?)\\s","\\1\n",unique(plot.dat$x))
@@ -1608,43 +1411,6 @@ shinyServer(function(input,output,session){
             })
         }
 
-        ## print(colVarPlot)
-        ## print(typeof(colVarPlot))
-
-        ## print('hello')
-
-        ## print(head(dataResults))
-
-        ## print(table(colVarPlot))
-
-        ## colVarPlot[is.na(colVarPlot)] <- 'unlabelled'
-
-        ## plot.opacity <- rep(1,nrow(dataResults))
-
-
-            ## plot.opacity <- rep(1,length(unique(colVarPlot)))
-            ## names(plot.opacity) <- unique(colVarPlot)
-            ## plot.opacity['unlabelled'] <- 0.001
-
-            ## print(plot.opacity)
-
-            ## plot.opacity[which(colVarPlot == 'unlabelled')] <- 0.2
-            
-            ## unlabelledPlot <- which(colVarPlot=='unlabelled')
-            ## labelledPlot <- which(colVarPlot != 'unlabelled')
-        #} ## else{
-        ##     labelledPlot <- 1:nrow(dataResults)
-        ##     unlabelledPlot <- c()
-        ## }
-
-
-        ## print(tail(cbind(plot.opacity,colVarPlot),n=200))
-
-        ## print(length(unlabelledPlot))
-        ## print(length(labelledPlot))
-
-        ## print(length(colVarPlot[labelledPlot]))
-
         output.plot <- plot_ly(dataResults, x = ~y1, y = ~y2,mode="markers",type='scattergl',color = colVarPlot,
                                colors=color.ramp,
                                hoverinfo='text',
@@ -1668,296 +1434,11 @@ shinyServer(function(input,output,session){
                    xaxis=ax,
                    yaxis=ax,
                    legend=list(font=list(family='sans-serif',size=11))) ## %>%
-            ## toWebGL()
-
-        ## if(length(unlabelledPlot) > 0){
-                   
-        ##     output.plot <- output.plot %>%
-        ##         add_trace(data=dataResults[unlabelledPlot,],x = ~y1, y = ~y2,
-        ##                         text=~paste('ID: ',run_id,
-        ##                                    '<br>Project: ',proj_id,
-        ##                                    '<br>Tissue General: ',tissue_general,
-        ##                                    '<br>Tissue Detail: ',tissue_detail,
-        ##                                    '<br>Sample Type: ',sample_type,
-        ##                                    ## '<br>Kmeans: ',KMeans,
-        ##                                    '<br>Louvain: ',Louvain,
-        ##                                    '<br>Gene: ',Gene,
-        ##                                    '<br>Annotation: ',colVarAnnotation[unlabelledPlot]),
-        ##                   marker = list(size=4),
-        ##                   color='#d3d3d3') ## %>%
-        ##         ## toWebGL()
-
-        ## }
 
         output.plot
         
 
-        ## output.plot <- plot_ly(data(), x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVar,hoverInfo='text',text=colVar) %>%
     })
   
 })
 
-    ## tsne.y <- readRDS('data/foo.RDS')
-
-    ## tsne.y <- readRDS('data/plotData.RDS')
-    
-    ## gene.dat <- read.table('data/gene_dat.tsv',sep='\t',header=T,stringsAsFactors=F)
-
-    ## tsne.y <- cbind(tsne.y,gene.dat)
-
-    ## tsne.y$kmeans.cluster <- as.factor(tsne.y$kmeans.cluster)
-
-    ## plotDat <- reactive({
-    ##     readRDS('data/plotData.RDS')
-    ##     })
-
-
-    ## output$tsne <- renderPlot({
-
-
-
-    ## output$tsne <- renderScatterD3({
-
-        ## tsne.y <- plotDat()
-        
-        ## ctDR <- read.table('data/scqpcr.csv',sep=',',header=T)
-
-        ## ## remove duplicated rows
-        ## if(anyDuplicated(ctDR[,10:ncol(ctDR)]) > 0){
-        ##     ctDR <- ctDR[-which(duplicated(ctDR[,10:ncol(ctDR)])),]
-        ## }
-
-        ## ## remove genes without variance
-        ## vars <- NULL
-        ## for(i in 10:ncol(ctDR)){
-        ##     vars <- c(vars, var(ctDR[,i], na.rm=T))
-        ## }
-        ## ctGenesNoVar <- ctDR[which(vars == 0 | is.na(vars))+9]
-        ## ctDR <- ctDR[,c(1:9, (which(!is.na(vars) & vars!=0)+9))]
-
-
-        ## ## get ordered gene list from differential expression between clusters
-        ## ## get p-values for differential expression for factors
-        ## pvals <- NULL
-        ## for(i in 10:ncol(ctDR)){
-        ##     pvals <- c(pvals, kruskal.test(ctDR[,i], factor(ctDR[, "kmeans.cluster"]))$p.value)
-        ## }
-
-        ## ctDR <- ctDR[,c(1:9, (order(pvals)+9))]
-        ## genesByDiff <- names(ctDR)[10:ncol(ctDR)]
-
-
-        ## ## t-SNE
-        ## set.seed(1)
-        ## tsne_out <- Rtsne(as.matrix(ctDR[,10:ncol(ctDR)]), perplexity = 30)
-
-        ## tsne_y <- as.data.frame(cbind(tsne_out$Y, 
-        ##                               ctDR$cellSource,
-        ##                               ctDR$kmeans.cluster,
-        ##                               ctDR[, genesByDiff]))
-
-        ## names(tsne_y)[1:4] <- c("y1", "y2", "tissue", "kmeans.cluster")
-        ## kmeans.levels <- unique(tsne_y$kmeans.cluster)
-        ## kmeans.levels <- kmeans.levels[order(kmeans.levels)]
-        ## tsne_y$kmeans.cluster <- factor(tsne_y$kmeans.cluster, levels=kmeans.levels)
-
-        ## for(i in c(1,2,5:ncol(tsne_y))){
-        ##     tsne_y[, i] <- as.numeric(tsne_y[, i])
-        ## }
-
-        
-
-        ## tsne <- plot_ly(tsne.y,x=~y1,y=~y2,type='scatter',mode='markers',
-        ##                 hoverinfo = 'text',
-        ##                 text = ~paste(tissue_general,'<br>',project,'<br>',tumor_sample_type))
-
-
-        ## tsne <- scatterD3(data=tsne.y,x=y1,y=y2,transitions=TRUE)
-        
-        ## tsne <- ggplot(tsne.y, aes(y1,y2)) +
-        ##     theme_bw() +
-        ##     scale_x_continuous(breaks=seq(min(tsne.y$y1), max(tsne.y$y1), length.out = 10),
-        ##                        minor_breaks = NULL) +
-        ##     scale_y_continuous(breaks=seq(min(tsne.y$y2), max(tsne.y$y2), length.out = 10),
-        ##                        minor_breaks = NULL) +
-        ##     theme(axis.line=element_blank(),
-        ##           axis.text.x=element_blank(),
-        ##           axis.text.y=element_blank(),
-        ##           axis.ticks=element_blank(),
-        ##           axis.title.x=element_blank(),
-        ##           axis.title.y=element_blank(),
-        ##           panel.border=element_blank(),
-        ##           panel.grid.major=element_blank(),
-        ##           panel.grid.minor=element_blank()) 
-
-
-
-
-            ## tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
-            ## tsne <- tsne %>%
-            ##     add_trace(colour='black')
-
-                ## tsne <- tsne + geom_point(colour='black',size=2.9,alpha=0.9)
-
-    ## data <- reactive({
-    ##     tsne.y <- readRDS('data/plotData.RDS')
-    ##     return(tsne.y)
-    ## })
-
-
-        ## if(!(is.null(input$gene.vec))){
-        ##     input.dat <- read.table(input$gene.vec$datapath,sep='\t',header=F,stringsAsFactors=F)
-
-        ##     head(input.dat)
-        ##     dist.vec <- apply(tsne.y[,rownames(input.dat)],1,dist)
-
-        ##     tsne.y$distances <- dist.vec
-            
-        ##     tsne <- tsne %>%
-        ##         add_trace(color=~distances)
-        ## }
-        ## else{
-
-
-                ## tsne <- tsne + geom_point(aes(colour=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+')),size=2.9,alpha=0.9) + guides(color=guide_legend(title='Metadata Group'))
-
-                ## tsne <- tsne %>%
-                ##     add_trace(color=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+'))
-                ## tsne <- scatterD3(data=tsne.y,x=y1,y=y2,col_var=apply(tsne.y[,input$colorfactors,drop=FALSE],1,paste,collapse='+'),transitions=TRUE)
-
-
-        ## }
-        
-        ## if(input$genevsgroup == 3){
-        ##     if(length(input$groupShape) == 0){
-        ##         tsne <- tsne + geom_point(aes(colour=tsne.y[,input$genecolor]),size=2.9,alpha=0.9) + scale_colour_gradient2(low ='red',mid='white',high='blue',limits=c(min(tsne.y[,input$genecolor]),max(tsne.y[,input$genecolor]))) + guides(color=guide_legend(title = sprintf('%s Expression',input$genecolor)))
-        ##     }
-        ##     else{
-        ##         tsne <- tsne + geom_point(aes(colour=tsne.y[,input$genecolor],shape=tsne.y[,input$groupShape]),size=2.9,alpha=0.9) + scale_colour_gradient2(low = 'red',mid='white',high='blue',limits=c(min(tsne.y[,input$genecolor]),max(tsne.y[,input$genecolor]))) + guides(color=guide_legend(title = sprintf('%s Expression',input$genecolor)),shape=guide_legend(title=input$groupShape))
-        ##     }
-        ## }
-
-
-
-
-        ## scatterD3(x = data()[,'y1'],
-        ##           y = data()[,'y2'],
-        ##           col_var = colVar)
-                  ## transitions=TRUE)
-
-
-
-
-
-
-### stuff for euclid
-
-        ## colVar <- NULL
-        ## ## colVar = NULL
-        ## ## if(input$genevsgroup == 0){
-        ## ## }
-
-        ## ## if(input$genevsgroup == 2){
-        ## ## if(length(input$colorfactors) == 0){
-            
-        ## ## }
-        ## if(input$colorFactors == 'Mesh'){
-            
-        ##     tree <- input$tree
-
-        ##     if(is.null(tree)){
-        ##         colVar=NULL}
-        ##     else{
-        ##         mesh.selection <- unlist(get_selected(tree))
-        ##         mesh.id <- strsplit(mesh.selection,':')[[1]][1]
-        ##         mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
-        ##         colVar <- rep('unlabelled',length(tsne.order))
-        ##         names(colVar <- tsne.order)
-        ##         for(label in names(mesh.info)){
-        ##             colVar[mesh.info[[label]]] <- label
-        ##         }
-        ##     }
-
-        ## } else if(length(input$colorfactors) > 0){
-
-        ##     colVar = apply(data()[,input$colorfactors,drop=FALSE],1,paste,collapse='+')
-            
-        ## }
-
-        ## }
-
-        ## if(!is.null(spear.file)){
-
-        ##     req <- POST("http://localhost:3000/spearman_distance",body=upload_file(spear.file$datapath,'text/plain'))
-        ##     stop_for_status(req)
-            
-        ##     req.text <- content(req,"text","text/plain")
-
-        ##     con <- textConnection(req.text)
-        ##     dist.vec <- read.table(con,sep='\t',header=T)
-
-        ##     dat.rows <- rownames(data())
-        ##     dat.rows <- gsub('-','.',dat.rows)
-        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
-
-        ##     colVar <- dist.vec[dat.rows,]
-
-        ##     colVar <- order(colVar)
-
-        ##     ## print(min(colVar))
-
-        ##     ## ## colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
-
-        ##     ## print(min(colVar))
-        ## }
-
-        ## if(!is.null(euclid.file)){
-
-        ##     req <- POST("http://localhost:3000/euclid_distance",body=upload_file(euclid.file$datapath,'text/plain'))
-        ##     stop_for_status(req)
-            
-        ##     req.text <- content(req,"text","text/plain")
-
-        ##     con <- textConnection(req.text)
-        ##     dist.vec <- read.table(con,sep='\t',header=T)
-
-        ##     dat.rows <- rownames(data())
-        ##     dat.rows <- gsub('-','.',dat.rows)
-        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
-
-        ##     colVar <- dist.vec[dat.rows,]
-
-        ##     colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
-
-        ##     colVar <- order(colVar)
-
-        ## }
-
-        ## if(!is.null(euclid.pca.file)){
-
-        ##     req <- POST("http://localhost:3000/euclid_pca",body=upload_file(euclid.pca.file$datapath,'text/plain'))
-        ##     stop_for_status(req)
-            
-        ##     req.text <- content(req,"text","text/plain")
-
-        ##     con <- textConnection(req.text)
-        ##     dist.vec <- read.table(con,sep='\t',header=T)
-
-        ##     print(head(dist.vec))
-
-        ##     dat.rows <- rownames(data())
-        ##     dat.rows <- gsub('-','.',dat.rows)
-        ##     dat.rows <- sub('^([0-9])','X\\1',dat.rows)
-
-        ##     colVar <- dist.vec[dat.rows,]
-        ##     ## colVar <- sqrt(colVar)
-        ##     ## colVar <- max(colVar) - colVar
-
-
-        ##     colVar[colVar==min(colVar)] <- min(subset(dist.vec,x>1))
-        ##     colVar <- log(colVar)
-        ##     colVar <- 1.01 ^ (max(colVar) - colVar)
-
-        ##     ## colVar <- order(colVar)
-
-        ## }
