@@ -7,7 +7,6 @@ library(stats)
 library(shiny)
 library(scales)
 library(plotly)
-## library(scatterD3)
 library(httr)
 library(shinyTree)
 library(jsonlite)
@@ -17,15 +16,6 @@ library(stringr)
 library(parallel)
 library(DBI)
 library(odbc)
-
-## lasso2d = '{
-##     name: 'lasso2d',
-##     title: 'Lasso Select',
-##     attr: 'dragmode',
-##     val: 'lasso',
-##     icon: Icons.lasso,
-##     click: handleCartesian
-## };'
 
 shinyServer(function(input,output,session){  
 
@@ -38,7 +28,7 @@ shinyServer(function(input,output,session){
         range = c(-55,55)
     )
 
-    mercator.db.con <- dbConnect(odbc(),'PostgreSQL')
+    ## mercator.db.con <- dbConnect(odbc(),'PostgreSQL')
 
     tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_pc3sd_filteredp40.RDS')
     tsne.data <- tsne.data + matrix(data=rnorm(2*nrow(tsne.data),sd=0.5),ncol=2)    
@@ -75,7 +65,7 @@ shinyServer(function(input,output,session){
     louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
     names(louvain.choices) <- louvain.choices
 
-    top.clus.per.genes <- readRDS('data/leiden_pc3sd_r25e-3_markers_top_clus.RDS')
+    ## top.clus.per.genes <- readRDS('data/leiden_pc3sd_r25e-3_markers_top_clus.RDS')
 
 
     marker.list <- readRDS('data/pairwise_leiden_r25e-3_marker_list_filtered_5th_perc_shiny.RDS')
@@ -413,7 +403,9 @@ shinyServer(function(input,output,session){
 
             rot.vec <- t(center.vec) %*% rotation.dat
 
-            dist.vec <- parApply(cl,map.dat,1,getDistance,gene.vec=rot.vec)
+            dist.vec <- apply(map.dat,1,getDistance,gene.vec=rot.vec)
+
+            ## dist.vec <- parApply(cl,map.dat,1,getDistance,gene.vec=rot.vec)
 
             dist.mat[,col] <- dist.vec
         }
@@ -492,10 +484,10 @@ shinyServer(function(input,output,session){
         } else{
             tissue.selection <- unlist(get_selected(tree))
             tissue.id <- strsplit(tissue.selection,':')[[1]][1]
-            ## tissue.info <- fromJSON(sprintf('http://localhost:3000/tissue_info/%s',tissue.id))
+            tissue.info <- fromJSON(sprintf('http://localhost:3000/tissue_info/%s',tissue.id))
 
-            tissue.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM tissue_tree WHERE id='%s'",tissue.id)))
-            tissue.info <- fromJSON(tissue.req$termtree)
+            ## tissue.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM tissue_tree WHERE id='%s'",tissue.id)))
+            ## tissue.info <- fromJSON(tissue.req$termtree)
             
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
@@ -519,10 +511,10 @@ shinyServer(function(input,output,session){
             doid.split <- strsplit(doid.selection,':')[[1]]
             doid.id <- paste(doid.split[1],doid.split[2],sep='_')
 
-            doid.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM doid_dat WHERE id='%s'",doid.id)))
+            ## doid.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM doid_dat WHERE id='%s'",doid.id)))
 
-            ## doid.info <- fromJSON(sprintf('http://localhost:3000/doid_info/%s',doid.id))
-            doid.info <- fromJSON(doid.req$termtree)
+            doid.info <- fromJSON(sprintf('http://localhost:3000/doid_info/%s',doid.id))
+            ## doid.info <- fromJSON(doid.req$termtree)
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
 
@@ -546,10 +538,10 @@ shinyServer(function(input,output,session){
             ## efo.id <- paste(efo.split[1],efo.split[2],sep='_')
             efo.id <- efo.split[1]
 
-            efo.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM efo_tree WHERE id='%s'",efo.id)))
-            efo.info <- fromJSON(efo.req$termtree)
+            ## efo.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM efo_tree WHERE id='%s'",efo.id)))
+            ## efo.info <- fromJSON(efo.req$termtree)
 
-            ## efo.info <- fromJSON(sprintf('http://localhost:3000/efo_info/%s',efo.id))
+            efo.info <- fromJSON(sprintf('http://localhost:3000/efo_info/%s',efo.id))
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
 
@@ -570,10 +562,10 @@ shinyServer(function(input,output,session){
         } else{
             mesh.selection <- unlist(get_selected(tree))
             mesh.id <- strsplit(mesh.selection,':')[[1]][1]
-            ## mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
+            mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
 
-            mesh.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM mesh_tree WHERE id='%s'",mesh.id)))
-            mesh.info <- fromJSON(mesh.req$termtree)
+            ## mesh.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM mesh_tree WHERE id='%s'",mesh.id)))
+            ## mesh.info <- fromJSON(mesh.req$termtree)
             
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
