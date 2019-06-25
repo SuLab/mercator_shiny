@@ -457,7 +457,7 @@ shinyServer(function(input,output,session){
 
         gene.id <- input$whichGene
 
-        gene.info <- fromJSON(sprintf('http://localhost:3000/gene_vals/%s',gene.id))
+        gene.info <- fromJSON(sprintf('http://54.157.140.239:3000/gene_vals/%s',gene.id))
 
         names(gene.info) <- gene.tpm.samps
 
@@ -484,7 +484,7 @@ shinyServer(function(input,output,session){
         } else{
             tissue.selection <- unlist(get_selected(tree))
             tissue.id <- strsplit(tissue.selection,':')[[1]][1]
-            tissue.info <- fromJSON(sprintf('http://localhost:3000/tissue_info/%s',tissue.id))
+            tissue.info <- fromJSON(sprintf('http://54.157.140.239:3000/tissue_info/%s',tissue.id))
 
             ## tissue.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM tissue_tree WHERE id='%s'",tissue.id)))
             ## tissue.info <- fromJSON(tissue.req$termtree)
@@ -513,7 +513,7 @@ shinyServer(function(input,output,session){
 
             ## doid.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM doid_dat WHERE id='%s'",doid.id)))
 
-            doid.info <- fromJSON(sprintf('http://localhost:3000/doid_info/%s',doid.id))
+            doid.info <- fromJSON(sprintf('54.157.140.239:3000/doid_info/%s',doid.id))
             ## doid.info <- fromJSON(doid.req$termtree)
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
@@ -541,7 +541,7 @@ shinyServer(function(input,output,session){
             ## efo.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM efo_tree WHERE id='%s'",efo.id)))
             ## efo.info <- fromJSON(efo.req$termtree)
 
-            efo.info <- fromJSON(sprintf('http://localhost:3000/efo_info/%s',efo.id))
+            efo.info <- fromJSON(sprintf('http://54.157.140.239:3000/efo_info/%s',efo.id))
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
 
@@ -562,7 +562,7 @@ shinyServer(function(input,output,session){
         } else{
             mesh.selection <- unlist(get_selected(tree))
             mesh.id <- strsplit(mesh.selection,':')[[1]][1]
-            mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
+            mesh.info <- fromJSON(sprintf('http://54.157.140.239:3000/ontology_info/%s',mesh.id))
 
             ## mesh.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM mesh_tree WHERE id='%s'",mesh.id)))
             ## mesh.info <- fromJSON(mesh.req$termtree)
