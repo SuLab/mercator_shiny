@@ -35,7 +35,7 @@ shinyServer(function(input,output,session){
 
     tsne.order <- rownames(tsne.data)
 
-    tsne.meta <- readRDS('data/recount_meta_sampletype.RDS')
+    tsne.meta <- readRDS('data/recount_meta_sampletype_urls.RDS')
     rownames(tsne.meta) <- tsne.meta$run_id
     tsne.meta <- tsne.meta[tsne.order,]
 
@@ -50,11 +50,11 @@ shinyServer(function(input,output,session){
 
     tsne.meta <- cbind(tsne.meta,tcga.gtex.meta[,c('tissue_general','tissue_detail')])
 
-    tcga.case.ids <- readRDS('data/pheno_case_ids.RDS')
-    rownames(tcga.case.ids) <- tcga.case.ids$bigwig_file
+    ## tcga.case.ids <- readRDS('data/pheno_case_ids.RDS')
+    ## rownames(tcga.case.ids) <- tcga.case.ids$bigwig_file
     
-    tcga.case.ids <- tcga.case.ids[tsne.order,]
-    tsne.meta <- cbind(tsne.meta,tcga.case.ids$gdc_cases.case_id)
+    ## tcga.case.ids <- tcga.case.ids[tsne.order,]
+    ## tsne.meta <- cbind(tsne.meta,tcga.case.ids$gdc_cases.case_id)
 
     gene.tpm.samps <- readRDS('data/tpm_mat_rownames.RDS')
 
@@ -311,7 +311,8 @@ shinyServer(function(input,output,session){
 
         dataDT <- DT::datatable(dt,
                                 options = list(pageLength=25
-                                    )
+                                               ),
+                                escape=FALSE
                                 )
 
         return(dataDT)
@@ -333,7 +334,7 @@ shinyServer(function(input,output,session){
 
     observeEvent(input$topNavBar, {
 
-        if(input$topNavBar == 'genePanel'){
+        if(input$topNavBar == 'genePanel' | input$topNavBar == 'samplePanel'){
             
             runjs(" var $this = $('#controlPanelClickable');
                     if(!$this.hasClass('panel-collapsed')) {
@@ -343,7 +344,7 @@ shinyServer(function(input,output,session){
                     }")
 
         }
-        else if(user.selections$previous.tab == 'genePanel'){
+        else if(user.selections$previous.tab == 'genePanel' | user.selections$previous.tab == 'samplePanel'){
 
             runjs(" var $this = $('#controlPanelClickable');
                     if($this.hasClass('panel-collapsed')) {
@@ -360,7 +361,8 @@ shinyServer(function(input,output,session){
 
         getDistance <- function(x,gene.vec) {
 
-            eu.dist <- sum((x - gene.vec)^2)
+            eu.dist <- sum((x - gene.vec)^2)            
+            ## eu.dist <- cor(x,gene.vec,method='spearman')
 
             ## eu.dist <- (x %*% gene.vec) / (norm(x,'2') * norm(gene.vec,'2'))
 
@@ -448,8 +450,8 @@ shinyServer(function(input,output,session){
 
         ## geneVec <- NULL
 
-        ## if(input$whichGene == ''){
-        if(TRUE){
+        if(input$whichGene == ''){
+        ## if(TRUE){
             return(NULL)
         }
         
@@ -513,7 +515,7 @@ shinyServer(function(input,output,session){
 
             ## doid.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM doid_dat WHERE id='%s'",doid.id)))
 
-            doid.info <- fromJSON(sprintf('localhost:3000/doid_info/%s',doid.id))
+            doid.info <- fromJSON(sprintf('http://localhost:3000/doid_info/%s',doid.id))
             ## doid.info <- fromJSON(doid.req$termtree)
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
@@ -727,6 +729,8 @@ shinyServer(function(input,output,session){
         samp.id <- tsne.meta[run.id,'samp_id']
 
         case.id <- tsne.meta[run.id,'tcga.case.ids$gdc_cases.case_id']
+
+        if(is.na(run.id)) return('Click on a t-SNE point to link to SRA entry')
 
         if(tsne.meta[run.id,'proj_id'] == 'TCGA'){
             ## url <- a(sprintf('TCGA link to sample %s',samp.id),href=paste('https://portal.gdc.cancer.gov/repository?facetTab=cases&filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22cases.submitter_id%22%2C%22value%22%3A%5B%22',samp.id,'%22%5D%7D%7D%5D%7D',sep=''),target='_blank')
@@ -1300,6 +1304,7 @@ shinyServer(function(input,output,session){
 
         } else if(colorFactors == 'Projection'){
             colVarPlot <- log2(projectionVec+1)
+            ## colVarPlot <- -1*projectionVec
 
             ## bottom.ramp <- colorRampPalette(c('#D73027','#FFFFBF'))
             ## bottom.ramp <- colorRampPalette(c('#FF0000','#FFFFBF'))
@@ -1311,8 +1316,8 @@ shinyServer(function(input,output,session){
 
             ## min.point <- min(min(colVarPlot),0.1439294) ### using true minimum, is waaaaaay too low
             min.point <- min(min(colVarPlot),13.51984) # 1st percentile
-            ## min.point <- min(min(colVarPlot),10.85842) # testing, may be too small
-            ## max.point <- max(max(colVarPlot),25.65136)
+            ## ## min.point <- min(min(colVarPlot),10.85842) # testing, may be too small
+            ## ## max.point <- max(max(colVarPlot),25.65136)
             max.point <- 25.65136
             
             ## mean.point <- min(mean(colVarPlot),16.69396)
@@ -1321,6 +1326,9 @@ shinyServer(function(input,output,session){
 
             ## print(min.point)
             ## print(max.point)
+
+            ## min.point <- min(colVarPlot)
+            ## max.point <- max(colVarPlot)
 
             mid.point <- round((mean.point - min.point) / (max.point - min.point)*100)
 
