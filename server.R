@@ -269,7 +269,7 @@ shinyServer(function(input,output,session){
 
         ## })
 
-        dt <- tsne.meta[,c(1,2,3,4,5,6)]
+        dt <- tsne.meta[,c(1,2,3,4,5,7,8)]
 
         dt$Louvain <- louvainVec
 
@@ -768,8 +768,8 @@ shinyServer(function(input,output,session){
         tissueResults <- tissueVec()
         doidResults <- doidVec()
         efoResults <- efoVec()
-        dt <- tsne.meta[,c(1,2,3,4,5,6,7)]
-        colnames(dt) <- c('proj_id','samp_id','run_id','sample_type','tissue_general','tissue_detail','tcga_case_id')
+        dt <- tsne.meta[,c(1,2,3,4,6,7,8)]
+        colnames(dt) <- c('proj_id','samp_id','run_id','sample_type','tcga_case_id','tissue_general','tissue_detail')
 
         dt$Louvain <- louvainVec
 
