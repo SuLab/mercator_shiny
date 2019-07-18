@@ -260,56 +260,59 @@ shinyServer(function(input,output,session){
 
         ## isolate({
 
-        selectionRes <- selectionVec()
-        louvainVec <- louvainVec()
-        meshResults <- meshVec()
-        tissueResults <- tissueVec()
-        doidResults <- doidVec()
-        efoResults <- efoVec()
+        ## selectionRes <- selectionVec()
+        ## louvainVec <- louvainVec()
+        ## meshResults <- meshVec()
+        ## tissueResults <- tissueVec()
+        ## doidResults <- doidVec()
+        ## efoResults <- efoVec()
 
-        ## })
+        ## ## })
 
-        dt <- tsne.meta[,c(1,2,3,4,5,7,8)]
+        ## dt <- tsne.meta[,c(1,2,3,4,5,7,8)]
 
-        dt$Louvain <- louvainVec
+        ## dt$Louvain <- louvainVec
 
-        if(is.null(meshResults)){
-            dt$mesh <- NA
-        } else{
-            dt$mesh <- meshResults
-        }
+        ## if(is.null(meshResults)){
+        ##     dt$mesh <- NA
+        ## } else{
+        ##     dt$mesh <- meshResults
+        ## }
 
-        if(is.null(tissueResults)){
-            dt$tissue <- NA
-        } else{
-            dt$tissue <- tissueResults
-        }
+        ## if(is.null(tissueResults)){
+        ##     dt$tissue <- NA
+        ## } else{
+        ##     dt$tissue <- tissueResults
+        ## }
 
-        if(is.null(doidResults)){
-            dt$doid <- NA
-        } else{
-            dt$doid <- doidResults
-        }
+        ## if(is.null(doidResults)){
+        ##     dt$doid <- NA
+        ## } else{
+        ##     dt$doid <- doidResults
+        ## }
 
-        if(is.null(efoResults)){
-            dt$efo <- NA
-        } else{
-            dt$efo <- efoResults
-        }
+        ## if(is.null(efoResults)){
+        ##     dt$efo <- NA
+        ## } else{
+        ##     dt$efo <- efoResults
+        ## }
 
-        if(input$sampleTableControl == 'Selection'){
-            dt <- dt[selectionRes$samps,]
-            dt$group <- selectionRes$group
-        ## } else if('Louvain' %in% input$sampleTableControl){
-        } else if(grepl('Louvain',input$sampleTableControl)){
-            louvain.id <- gsub('Louvain Cluster ','',input$sampleTableControl)
+        ## if(input$sampleTableControl == 'Selection'){
+        ##     dt <- dt[selectionRes$samps,]
+        ##     dt$group <- selectionRes$group
+        ## ## } else if('Louvain' %in% input$sampleTableControl){
+        ## } else if(grepl('Louvain',input$sampleTableControl)){
+        ##     louvain.id <- gsub('Louvain Cluster ','',input$sampleTableControl)
 
-            dt <- subset(dt,Louvain==as.numeric(louvain.id))
-        }
+        ##     dt <- subset(dt,Louvain==as.numeric(louvain.id))
+        ## }
 
-        rownames(dt) <- c()
+        ## rownames(dt) <- c()
 
-        dataDT <- DT::datatable(dt,
+
+
+        ## dataDT <- DT::datatable(dt,
+        dataDT <- DT::datatable(getSampleTable()[,c(-6)],
                                 options = list(pageLength=25
                                                ),
                                 escape=FALSE
@@ -768,8 +771,8 @@ shinyServer(function(input,output,session){
         tissueResults <- tissueVec()
         doidResults <- doidVec()
         efoResults <- efoVec()
-        dt <- tsne.meta[,c(1,2,3,4,6,7,8)]
-        colnames(dt) <- c('proj_id','samp_id','run_id','sample_type','tcga_case_id','tissue_general','tissue_detail')
+        dt <- tsne.meta[,c(1,2,3,4,5,6,7,8)]
+        colnames(dt) <- c('proj_id','samp_id','run_id','sample_type','url','tcga_case_id','tissue_general','tissue_detail')
 
         dt$Louvain <- louvainVec
 
@@ -800,9 +803,16 @@ shinyServer(function(input,output,session){
         if(input$sampleTableControl == 'Selection'){
             dt <- dt[selectionRes$samps,]
             dt$group <- selectionRes$group
+        } else if(grepl('Louvain',input$sampleTableControl)){
+            louvain.id <- gsub('Louvain Cluster ','',input$sampleTableControl)
+
+            dt <- subset(dt,Louvain==as.numeric(louvain.id))
         }
 
         rownames(dt) <- c()
+
+        print(head(dt))
+        print(input$sampleTableControl)
 
         return(dt)
 
@@ -813,7 +823,7 @@ shinyServer(function(input,output,session){
             paste('samples-',Sys.Date(),'.csv',sep='')
         },
         content = function(con) {
-            write.csv(getSampleTable(),con)
+            write.csv(getSampleTable()[,c(-5)],con)
         }
     )
 
@@ -942,7 +952,7 @@ shinyServer(function(input,output,session){
             x.labels <- c(x.labels,'unlabelled'='Unlabelled')
         }
 
-        print(head(plot.dat))
+        ## print(head(plot.dat))
 
         output.plot <- ggplot() +
             geom_bar(data=plot.dat,aes(x=Label,y=number,fill=Label),stat='identity') +
@@ -1052,8 +1062,11 @@ shinyServer(function(input,output,session){
             plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
 
             group.means <- aggregate(plot.dat[,'y'],list(plot.dat[,'x']),mean)
+            
+            print(log(sort(group.means$x,decreasing=T)[1:10]+1))
+
             group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
-            ## print(group.means[1:10])
+            print(group.means[1:10])
 
             ## print(top.clus.per.genes[[gene.id]])
             
