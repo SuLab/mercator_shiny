@@ -67,8 +67,10 @@ shinyServer(function(input,output,session){
 
     ## top.clus.per.genes <- readRDS('data/leiden_pc3sd_r25e-3_markers_top_clus.RDS')
 
+    cellmarker.info <- readRDS('data/cell_marker_gene_table_fixed_ens.RDS')
+    rownames(cellmarker.info) <- cellmarker.info$V3
 
-    marker.list <- readRDS('data/pairwise_leiden_r25e-3_marker_list_filtered_5th_perc_shiny.RDS')
+    ## marker.list <- readRDS('data/pairwise_leiden_r25e-3_marker_list_filtered_5th_perc_shiny.RDS') 
 
     cellmarker.annotation.counts <- readRDS('data/cell_marker_annotations_marker_counts.RDS')
 
@@ -168,12 +170,14 @@ shinyServer(function(input,output,session){
 
     observeEvent(input$geneTable_rows_selected, {
 
-        if(input$geneGroup == 'all'){
-            selected.marker <- rownames(marker.list[['all']])[input$geneTable_rows_selected]
-        }
-        else{
-            selected.marker <- rownames(marker.list[[as.double(input$geneGroup)+1]])[input$geneTable_rows_selected]
-        }
+        ## if(input$geneGroup == 'all'){
+        ##     ## selected.marker <- rownames(marker.list[['all']])[input$geneTable_rows_selected]
+        ## }
+        ## else{
+        ##     selected.marker <- rownames(marker.list[[as.double(input$geneGroup)+1]])[input$geneTable_rows_selected]
+        ## }
+
+        selected.marker <- rownames(getGeneTable())[input$geneTable_rows_selected]
 
         ## print(selected.marker)
 
@@ -232,14 +236,45 @@ shinyServer(function(input,output,session){
                                                                 
     output$geneTable <- DT::renderDT({
 
+        ## if(input$geneGroup == 'all'){
+        ##     label.1 <- 'all'
+        ##     label.2 <- input$geneGroupSecond
+        ## }
+        ## else{
+        ##     label.1 <- as.numeric(input$geneGroup)
+        ##     label.2 <- as.numeric(input$geneGroupSecond)
 
-        if(input$geneGroup == 'all'){
-            dt <- marker.list[['all']]
-        } else{
-            dt <- marker.list[[as.double(input$geneGroup)+1]]
-        }
+        ##     if(label.1 > label.2){
+        ##         tmp <- label.1
+        ##         label.1 <- label.2
+        ##         label.2 <- tmp
+        ##     }
+        ## }
 
-        dataDT <- DT::datatable(dt,
+        ## ## label.2 <- as.numeric(input$geneGroupSecond)+1
+
+        ## label <- sprintf('%s.%s',label.1,label.2)
+
+        ## marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
+
+        ## rownames(marker.tab) <- marker.tab[,1]
+        ## colnames(marker.tab) <- c('ens_id','p-val','unique-fcs','total-fcs')
+
+        ## marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4)])
+
+        ## marker.tab <- marker.tab[,c(-3)]
+        ## colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','p-val','unique-fcs','total-fcs')
+
+        marker.tab <- getGeneTable()
+
+        ## if(input$geneGroup == 'all'){
+        ##     dt <- marker.list[['all']]
+        ## } else{
+        ##     dt <- marker.list[[as.double(input$geneGroup)+1]]
+        ## }
+
+        ## dataDT <- DT::datatable(dt,
+        dataDT <- DT::datatable(marker.tab,
                                 ## colnames=c('Symbol','ID','ENS_ID','gene-type','tissueType','cancerType','cellType','cellName','cluster p-val','cluster fc','cluster-all fc'),
                                 selection='single',
                                 options=list(
@@ -756,10 +791,44 @@ shinyServer(function(input,output,session){
     getGeneTable <- reactive({
 
         if(input$geneGroup == 'all'){
-            dt <- marker.list[['all']]
-        } else{
-            dt <- marker.list[[as.double(input$geneGroup)+1]]
+            label.1 <- 'all'
+            label.2 <- input$geneGroupSecond
         }
+        else if(input$geneGroup == input$geneGroupSecond){
+            return(subset(data.frame('name'=c(1,2),'min'=c(2,3)),name>3)) ## TODO modify to have all columns
+        }
+        else{
+            label.1 <- as.numeric(input$geneGroup)
+            label.2 <- as.numeric(input$geneGroupSecond)
+
+            if(label.1 > label.2){
+                tmp <- label.1
+                label.1 <- label.2
+                label.2 <- tmp
+            }
+        }
+
+        ## label.2 <- as.numeric(input$geneGroupSecond)+1
+
+        label <- sprintf('%s.%s',label.1,label.2)
+
+        marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
+
+        rownames(marker.tab) <- marker.tab[,1]
+        colnames(marker.tab) <- c('ens_id','p-val','unique-fcs','total-fcs')
+
+        marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4)])
+
+        marker.tab <- marker.tab[,c(-3)]
+        colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','p-val','unique-fcs','total-fcs')
+
+        return(marker.tab)
+
+        ## if(input$geneGroup == 'all'){
+        ##     dt <- marker.list[['all']]
+        ## } else{
+        ##     dt <- marker.list[[as.double(input$geneGroup)+1]]
+        ## }
 
     })
 
@@ -811,8 +880,8 @@ shinyServer(function(input,output,session){
 
         rownames(dt) <- c()
 
-        print(head(dt))
-        print(input$sampleTableControl)
+        ## print(head(dt))
+        ## print(input$sampleTableControl)
 
         return(dt)
 

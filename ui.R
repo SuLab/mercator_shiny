@@ -48,17 +48,33 @@ fluidPage(
 
                tabPanel('Gene Table',value='genePanel',
                         absolutePanel(fixed=FALSE,draggable=FALSE,top=72,left=435,right='auto',bottom='auto',width='auto',height='auto',
-                                      tags$label(class='control-label', 'Cluster # for marker table')
+                                      tags$label(class='control-label', 'Cluster #s for marker table')
                                       ),
-                        absolutePanel(fixed=FALSE,draggable=FALSE,top=42,left=620,right='auto',bottom='auto',width='auto',height='auto',
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=42,left=640,right='auto',bottom='auto',width='auto',height='auto',
                                       selectInput('geneGroup',
                                                   label='',
                                                   ## label='Cluster # for marker table',
                                                   choices = c('All'='all',naked.louvain.choices),
                                                   multiple=FALSE,
-                                                  selected='All')
+                                                  selected='All',
+                                                  width='100px')
                                       ),
-                        absolutePanel(fixed=FALSE,draggable=FALSE,top=62,left=975,right='auto',bottom='auto',width='auto',height='auto',
+
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=72,left=750,right='auto',bottom='auto',width='auto',height='auto',
+                                      tags$label(class='control-label', 'vs')
+                                      ),
+
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=42,left=780,right='auto',bottom='auto',width='auto',height='auto',
+                                      selectInput('geneGroupSecond',
+                                                  label='',
+                                                  ## label='Cluster # for marker table',
+                                                  choices = c(naked.louvain.choices),
+                                                  multiple=FALSE,
+                                                  selected='All',
+                                                  width='100px')
+                                      ),
+                                      
+                        absolutePanel(fixed=FALSE,draggable=FALSE,top=62,left=930,right='auto',bottom='auto',width='auto',height='auto',
                                       downloadButton('geneTableDownload',
                                                      label = 'Download gene table'
                                                      )
