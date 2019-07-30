@@ -793,6 +793,23 @@ shinyServer(function(input,output,session){
         if(input$geneGroup == 'all'){
             label.1 <- 'all'
             label.2 <- input$geneGroupSecond
+
+            label <- sprintf('%s.%s',label.1,label.2)
+
+            marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
+
+            rownames(marker.tab) <- marker.tab[,1]
+            colnames(marker.tab) <- c('ens_id','unique','p-val','unique-fcs','total-fcs')
+
+            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4,5)],stringsAsFactors=F)            
+
+            marker.tab <- marker.tab[,c(-3)]
+            colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','unique','p-val','unique-fcs','total-fcs')
+
+            marker.tab[['unique-fcs']] <- as.numeric(marker.tab[['unique-fcs']])
+            marker.tab[['total-fcs']] <- as.numeric(marker.tab[['total-fcs']])
+
+            
         }
         else if(input$geneGroup == input$geneGroupSecond){
             return(subset(data.frame('name'=c(1,2),'min'=c(2,3)),name>3)) ## TODO modify to have all columns
@@ -806,21 +823,38 @@ shinyServer(function(input,output,session){
                 label.1 <- label.2
                 label.2 <- tmp
             }
+
+            label <- sprintf('%s.%s',label.1,label.2)
+
+            marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
+
+            rownames(marker.tab) <- marker.tab[,1]
+            colnames(marker.tab) <- c('ens_id','p-val','fc')
+
+            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3)],stringsAsFactors=F)
+
+            marker.tab <- marker.tab[,c(-3)]
+            colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','p-val','log2fc')
+
+            marker.tab[['log2fc']] <- as.numeric(marker.tab[['log2fc']])
+            
         }
 
         ## label.2 <- as.numeric(input$geneGroupSecond)+1
 
-        label <- sprintf('%s.%s',label.1,label.2)
+        ## label <- sprintf('%s.%s',label.1,label.2)
 
-        marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
+        ## marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
 
-        rownames(marker.tab) <- marker.tab[,1]
-        colnames(marker.tab) <- c('ens_id','p-val','unique-fcs','total-fcs')
+        ## rownames(marker.tab) <- marker.tab[,1]
+        ## colnames(marker.tab) <- c('ens_id','p-val','unique-fcs','total-fcs')
 
-        marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4)])
+        ## marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4)],stringsAsFactors=F)
 
-        marker.tab <- marker.tab[,c(-3)]
-        colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','p-val','unique-fcs','total-fcs')
+        ## marker.tab <- marker.tab[,c(-3)]
+        ## colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','p-val','unique-fcs','total-fcs')
+
+        marker.tab[['p-val']] <- as.numeric(marker.tab[['p-val']])
 
         return(marker.tab)
 
@@ -840,7 +874,7 @@ shinyServer(function(input,output,session){
         tissueResults <- tissueVec()
         doidResults <- doidVec()
         efoResults <- efoVec()
-        dt <- tsne.meta[,c(1,2,3,4,5,6,7,8)]
+        dt <- tsne.meta[,c(1,2,3,4,6,7,8,9)]
         colnames(dt) <- c('proj_id','samp_id','run_id','sample_type','url','tcga_case_id','tissue_general','tissue_detail')
 
         dt$Louvain <- louvainVec
