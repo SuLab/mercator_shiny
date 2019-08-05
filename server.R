@@ -818,10 +818,14 @@ shinyServer(function(input,output,session){
             label.1 <- as.numeric(input$geneGroup)
             label.2 <- as.numeric(input$geneGroupSecond)
 
+            mult <- 1
+
             if(label.1 > label.2){
                 tmp <- label.1
                 label.1 <- label.2
                 label.2 <- tmp
+
+                mult <- -1
             }
 
             label <- sprintf('%s.%s',label.1,label.2)
@@ -836,8 +840,7 @@ shinyServer(function(input,output,session){
             marker.tab <- marker.tab[,c(-3)]
             colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','p-val','log2fc')
 
-            marker.tab[['log2fc']] <- as.numeric(marker.tab[['log2fc']])
-            
+            marker.tab[['log2fc']] <- as.numeric(marker.tab[['log2fc']])*mult
         }
 
         ## label.2 <- as.numeric(input$geneGroupSecond)+1
