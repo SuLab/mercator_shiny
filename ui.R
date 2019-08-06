@@ -54,7 +54,8 @@ fluidPage(
                                       selectInput('geneGroup',
                                                   label='',
                                                   ## label='Cluster # for marker table',
-                                                  choices = c('All'='all',naked.louvain.choices),
+                                                  ## choices = c('All'='all',naked.louvain.choices),
+                                                  choices = naked.louvain.choices,
                                                   multiple=FALSE,
                                                   selected='All',
                                                   width='100px')
@@ -68,7 +69,7 @@ fluidPage(
                                       selectInput('geneGroupSecond',
                                                   label='',
                                                   ## label='Cluster # for marker table',
-                                                  choices = c(naked.louvain.choices),
+                                                  choices = c('All'='all',naked.louvain.choices),
                                                   multiple=FALSE,
                                                   selected='All',
                                                   width='100px')
@@ -124,62 +125,63 @@ fluidPage(
                                     ),
                            tags$div(class='panel-body',
 
-                                    actionButton('colorButton','Redraw Plot'),
+                                    ## actionButton('colorButton','Redraw Plot'),
+                                    actionButton('colorButton',tags$h4('Redraw Plots')),
                                     
-                                    tags$br(),
-                                    tags$br(),
+                                    tags$hr(class='section-divider'),
 
-                                    sliderInput('markerSize','Adjust Marker Size',min=1,max=12,value=4),
-
+                                    ## tags$br(),
+                                    ## tags$br(),
 
                                     uiOutput('plotlyClick'),
                                     
-                                    tags$br(),
+                                    ## tags$br(),
+                                    tags$hr(class='section-divider'),
 
                                     selectizeInput('whichGene',
-                                                   label='Select a gene',
+                                                   label='Gene selection',
                                                    choices=NULL),
 
+                                    tags$hr(class='section-divider'),
 
-                                    fileInput('gene.vec','Color by euclidian distance to sample',
-                                              accept = c(
-                                                  'text/tsv',
-                                                  'text/tab-separated-values',
-                                                  'text/plain',
-                                                  '.tsv')
-                                              ),
 
-                                    DT::DTOutput('sampleInputTable',width='300px'),
 
-                                    tags$br(),
+                                    ## tags$br(),
 
                                     selectInput('colorfactors',
-                                                label = 'What to color by?',
+                                                label = 't-SNE Color',
                                                 choices = meta.choices,
                                                 multiple=FALSE
                                                 ),
 
+                                    sliderInput('markerSize','t-SNE Marker Size',min=1,max=12,value=4),
+
+                                    tags$hr(class='section-divider'),
+
                                     selectInput('violinXFactors',
-                                                label= 'Violin X-axis',
+                                                label= 'Violin plot X-axis',
                                                 choices = meta.choices,
                                                 multiple=FALSE
                                                 ),
 
                                     selectInput('violinYFactors',
-                                                label='Violin Y-axis',
+                                                label='Violin plot Y-axis',
                                                 choices = c('Projection'='projection','Gene'='gene'),
                                                 multiple=FALSE,
                                                 selected=c('Gene'='gene')
                                                 ),
 
+                                    tags$hr(class='section-divider'),
+
                                     selectInput('barPlotFactor',
-                                                label='Bar plot group',
+                                                label='Bar plot subset',
                                                 choices = c('All','Selections',louvain.choices),
                                                 multiple=FALSE
                                                 ),
 
                                     selectInput('barPlotXaxis',
-                                                label='X axis for Bar Plot',
+                                                ## label='X axis for Bar Plot',
+                                                label = 'Bar plot X-axis',
                                                 choices=c('No Coloring' = 'No Coloring',
                                                           'Project ID' = 'proj_id',
                                                           'GTEx/TCGA Gross Tissue' = 'tissue_general',
@@ -193,22 +195,57 @@ fluidPage(
                                                 multiple=FALSE
                                                 ),
 
+                                    tags$hr(class='section-divider'),
+                                    
+                                    tags$b('Ontology selection'),
+                                    tags$br(),
+
+                                    tags$p('Mesh: Anatomy'),
                                     shinyTree('meshTree',theme='proton'),
+                                    tags$br(),
 
+                                    tags$p('Tissue Ontology'),
                                     shinyTree('tissueTree',theme='proton'),
+                                    tags$br(),
 
+                                    tags$p('DOID'),
                                     shinyTree('doidTree',theme='proton'),
+                                    tags$br(),
 
+                                    tags$p('EFO: Cultured cell'),
                                     shinyTree('efoTree',theme='proton'),
+                                    tags$br(),
                                     
 
+                                    tags$hr(class='section-divider'),
                                     ## textInput('markerSearch','Search Marker Table'),
                                     
-                                    textInput('selectionName','Selection Name',value=''),
+                                    textInput('selectionName','Name lasso/box selection',value=''),
 
                                     actionButton('saveSelection','Save Selection'),
 
-                                    DT::DTOutput('selectionList',width='17%')
+                                    tags$br(),
+
+                                    tags$br(),
+
+                                    tags$b('Selection Table'),
+                                    DT::DTOutput('selectionList',width='17%'),
+
+                                    tags$hr(class='section-divider'),
+
+                                    fileInput('gene.vec','Color by euclidian distance to sample',
+                                              accept = c(
+                                                  'text/tsv',
+                                                  'text/tab-separated-values',
+                                                  'text/plain',
+                                                  '.tsv')
+                                              ),
+                                    
+                                    tags$b('Sample Input Table'),
+                                    DT::DTOutput('sampleInputTable',width='300px')
+
+
+
                                     
                                     )
                            )

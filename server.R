@@ -790,9 +790,9 @@ shinyServer(function(input,output,session){
 
     getGeneTable <- reactive({
 
-        if(input$geneGroup == 'all'){
+        if(input$geneGroupSecond == 'all'){
             label.1 <- 'all'
-            label.2 <- input$geneGroupSecond
+            label.2 <- input$geneGroup
 
             label <- sprintf('%s.%s',label.1,label.2)
 

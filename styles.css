@@ -53,3 +53,7 @@
 .shiny-file-input-progress{
     display: none
 }
+
+hr.section-divider {
+    border: 1px solid #2965A9
+}
