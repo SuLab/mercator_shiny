@@ -132,7 +132,7 @@ shinyServer(function(input,output,session){
         if(grepl('Louvain', input$barPlotFactor)){
             updateSelectInput(session,
                               'barPlotXaxis',
-                              label='X axis for Bar Plot',                              
+                              label='Bar Plot X-axis',                              
                               choices = c('Project ID' = 'proj_id',
                                           'GTEx/TCGA Gross Tissue' = 'tissue_general',
                                           'GTEx/TCGA Detailed Tissue' = 'tissue_detail',
@@ -150,7 +150,7 @@ shinyServer(function(input,output,session){
         } else{
             updateSelectInput(session,
                               'barPlotXaxis',
-                              label='X axis for Bar Plot',                              
+                              label='Bar Plot X-axis',
                               choices = c('No Coloring' = 'No Coloring',
                                           'Project ID' = 'proj_id',
                                           'GTEx/TCGA Gross Tissue' = 'tissue_general',
@@ -164,9 +164,9 @@ shinyServer(function(input,output,session){
                               )
         }
     })
-                              
-                              
-        
+
+
+
 
     observeEvent(input$geneTable_rows_selected, {
 
@@ -267,6 +267,13 @@ shinyServer(function(input,output,session){
 
         marker.tab <- getGeneTable()
 
+        if(nrow(marker.tab) > 0){
+
+            marker.tab <- marker.tab[,c(10,8,9,3,4,5,6,7,11:ncol(marker.tab))]
+        }
+
+        print(head(marker.tab))
+
         ## if(input$geneGroup == 'all'){
         ##     dt <- marker.list[['all']]
         ## } else{
@@ -275,14 +282,16 @@ shinyServer(function(input,output,session){
 
         ## dataDT <- DT::datatable(dt,
         dataDT <- DT::datatable(marker.tab,
-                                ## colnames=c('Symbol','ID','ENS_ID','gene-type','tissueType','cancerType','cellType','cellName','cluster p-val','cluster fc','cluster-all fc'),
+                                ## colnames=c('Ensembl ID','Symbol','Entrez ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Unique','cluster p-val','cluster fc','cluster-all fc'),
                                 selection='single',
                                 options=list(
                                     'searching'=TRUE,
                                     'legnthChange'=FALSE,
                                     'pagingType'='full',
                                     'autoWidth'=TRUE,
-                                    'pageLength'=25)
+                                    'pageLength'=25),
+                                escape=FALSE,
+                                rownames=FALSE
                                 )
         
 
@@ -766,14 +775,20 @@ shinyServer(function(input,output,session){
 
         samp.id <- tsne.meta[run.id,'samp_id']
 
-        case.id <- tsne.meta[run.id,'tcga.case.ids$gdc_cases.case_id']
+        ## case.id <- tsne.meta[run.id,'tcga.case.ids$gdc_cases.case_id']
+        case.id <- tsne.meta[run.id,'gdc_cases.case_id']
 
         if(is.na(run.id)) return('Click on a t-SNE point to link to SRA entry')
 
         if(tsne.meta[run.id,'proj_id'] == 'TCGA'){
             ## url <- a(sprintf('TCGA link to sample %s',samp.id),href=paste('https://portal.gdc.cancer.gov/repository?facetTab=cases&filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22cases.submitter_id%22%2C%22value%22%3A%5B%22',samp.id,'%22%5D%7D%7D%5D%7D',sep=''),target='_blank')
-            
+
+            ## a(sprintf('Link to TCGA case %s',samp.id),href=sprintf('https://portal.gdc.cancer.gov/cases/%s',case.id),target='_blank')
+
             url <- a(sprintf('Link to TCGA case %s',samp.id),href=sprintf('https://portal.gdc.cancer.gov/cases/%s',case.id),target='_blank')
+
+            ## print(head(tsne.meta))
+            ## url <- a(sprintf('Link to TCGA case %s',user.selections$tsne.traces[[curveNumber]][inds]),href=sprintf('https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=%s',user.selections$tsne.traces[[curveNumber]][inds]),target='_blank')
         } else{
 
             url <- a(sprintf('Link to SRA run %s',user.selections$tsne.traces[[curveNumber]][inds]),href=sprintf('https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=%s',user.selections$tsne.traces[[curveNumber]][inds]),target='_blank')
@@ -804,12 +819,12 @@ shinyServer(function(input,output,session){
             marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4,5)],stringsAsFactors=F)            
 
             marker.tab <- marker.tab[,c(-3)]
-            colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','unique','p-val','unique-fcs','total-fcs')
+            colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','unique','p-val','unique-fcs','total-fcs')
 
             marker.tab[['unique-fcs']] <- as.numeric(marker.tab[['unique-fcs']])
             marker.tab[['total-fcs']] <- as.numeric(marker.tab[['total-fcs']])
 
-            
+            marker.tab <- marker.tab[order(marker.tab[['unique-fcs']],decreasing=T),]
         }
         else if(input$geneGroup == input$geneGroupSecond){
             return(subset(data.frame('name'=c(1,2),'min'=c(2,3)),name>3)) ## TODO modify to have all columns
@@ -838,9 +853,11 @@ shinyServer(function(input,output,session){
             marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3)],stringsAsFactors=F)
 
             marker.tab <- marker.tab[,c(-3)]
-            colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','p-val','log2fc')
+            colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','p-val','log2fc')
 
             marker.tab[['log2fc']] <- as.numeric(marker.tab[['log2fc']])*mult
+
+            marker.tab <- marker.tab[order(marker.tab$log2fc,decreasing=T),]
         }
 
         ## label.2 <- as.numeric(input$geneGroupSecond)+1
@@ -938,7 +955,11 @@ shinyServer(function(input,output,session){
             paste('gene-table-',input$geneGroup,'-',Sys.Date(),'.csv',sep='')
         },
         content = function(con) {
-            write.csv(getGeneTable(),con)
+
+            gene.tab <- getGeneTable()
+            gene.tab <- gene.tab[,c(-8,-9,-10)]
+            
+            write.csv(gene.tab,con)
         }
     )
 
