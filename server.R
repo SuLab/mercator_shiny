@@ -198,13 +198,26 @@ shinyServer(function(input,output,session){
         
         event.data <- event_data('plotly_selected',source = 'tsne')
 
+        ## saveRDS(event.data,'~/Documents/Projects/Mercator/tmp/event_dat.RDS')
+
         if(is.null(event.data) == TRUE) return(NULL)
 
-        curveNumber <- event.data$curveNumber+1
+        ## curveNumber <- event.data$curveNumber+1
 
-        inds <- event.data$pointNumber+1
+        ## inds <- event.data$pointNumber+1
 
-        user.selections$selection.list[[length(user.selections$selection.list)+1]] <- user.selections$tsne.traces[[curveNumber[1]]][inds]
+        selection.vec <- c()
+
+        for(curveNum in unique(event.data$curveNumber)){
+
+            inds <- subset(event.data,curveNumber==curveNum)$pointNumber + 1
+            
+            selection.vec <- c(selection.vec,user.selections$tsne.traces[[curveNum+1]][inds])
+
+        }
+
+        ## user.selections$selection.list[[length(user.selections$selection.list)+1]] <- user.selections$tsne.traces[[curveNumber[1]]][inds]
+        user.selections$selection.list[[length(user.selections$selection.list)+1]] <- selection.vec
 
         ## user.selections$selection.list[[length(user.selections$selection.list)+1]] <- data.frame(curveNumber,inds)
 
@@ -584,8 +597,9 @@ shinyServer(function(input,output,session){
         } else{
             efo.selection <- unlist(get_selected(tree))
             efo.split <- strsplit(efo.selection,':')[[1]]
-            ## efo.id <- paste(efo.split[1],efo.split[2],sep='_')
-            efo.id <- efo.split[1]
+            efo.id <- paste(efo.split[1],efo.split[2],sep='_')
+
+            ## efo.id <- efo.split[1]
 
             ## efo.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM efo_tree WHERE id='%s'",efo.id)))
             ## efo.info <- fromJSON(efo.req$termtree)
