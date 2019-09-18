@@ -142,6 +142,13 @@ fluidPage(
                                                    label='Gene selection',
                                                    choices=NULL),
 
+                                    selectInput('geneScale',
+                                                label='Gene Value Transformation',
+                                                choices = c('log2(GENE)'='log2gene','log2(GENE+1)'='log2gene1','None'='none'),
+                                                multiple=FALSE,
+                                                selected=c('log2(GENE+1)'='log2gene1')
+                                                ),
+
                                     tags$hr(class='section-divider'),
 
 
@@ -170,6 +177,7 @@ fluidPage(
                                                 multiple=FALSE,
                                                 selected=c('Gene'='gene')
                                                 ),
+
 
                                     tags$hr(class='section-divider'),
 

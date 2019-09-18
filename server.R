@@ -30,8 +30,10 @@ shinyServer(function(input,output,session){
 
     ## mercator.db.con <- dbConnect(odbc(),'PostgreSQL')
 
-    tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_pc3sd_filteredp40.RDS')
-    tsne.data <- tsne.data + matrix(data=rnorm(2*nrow(tsne.data),sd=0.5),ncol=2)    
+    ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_pc3sd_filteredp40.RDS')
+    ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_pc3sd_mrmnorm.RDS')
+    tsne.data <- readRDS('data/mrmnorm_tsne_p80_nv750.RDS')
+    tsne.data <- tsne.data + matrix(data=rnorm(2*nrow(tsne.data),sd=0.5),ncol=2)
 
     tsne.order <- rownames(tsne.data)
 
@@ -56,11 +58,13 @@ shinyServer(function(input,output,session){
     ## tcga.case.ids <- tcga.case.ids[tsne.order,]
     ## tsne.meta <- cbind(tsne.meta,tcga.case.ids$gdc_cases.case_id)
 
-    gene.tpm.samps <- readRDS('data/tpm_mat_rownames.RDS')
+    ## gene.tpm.samps <- readRDS('data/tpm_mat_rownames.RDS')
+    gene.tpm.samps <- readRDS('data/mrmnorm_mat_rownames.RDS')
 
     gene.choices <- readRDS('data/shiny_gene_choice_list.RDS')
     gene.num.vec <- readRDS('data/shiny_gene_num_vec.RDS')
-    louvain.vec <- readRDS('data/leiden_pc3sd_r25e-3_vec.RDS')
+    ## louvain.vec <- readRDS('data/leiden_pc3sd_mrmnorm_r25e-3_vec.RDS')
+    louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_mrmnorm_k40_sim_nosingles.RDS')
     louvain.choices <- sort(unique(louvain.vec))
     louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
     names(louvain.choices) <- louvain.choices
@@ -285,7 +289,7 @@ shinyServer(function(input,output,session){
             marker.tab <- marker.tab[,c(10,8,9,3,4,5,6,7,11:ncol(marker.tab))]
         }
 
-        print(head(marker.tab))
+        ## print(head(marker.tab))
 
         ## if(input$geneGroup == 'all'){
         ##     dt <- marker.list[['all']]
@@ -529,6 +533,12 @@ shinyServer(function(input,output,session){
         names.used <- intersect(tsne.order,gene.tpm.samps)
 
         geneVec[names.used] <- gene.info[names.used]
+
+        if(input$geneScale == 'log2gene'){
+            geneVec <- log2(geneVec)
+        } else if(input$geneScale == 'log2gene1'){
+            geneVec <- log2(geneVec + 1)
+        } 
 
         ## gene.info <- gene.info[tsne.order]
 
@@ -847,14 +857,14 @@ shinyServer(function(input,output,session){
             label.1 <- as.numeric(input$geneGroup)
             label.2 <- as.numeric(input$geneGroupSecond)
 
-            mult <- 1
+            mult <- -1
 
             if(label.1 > label.2){
                 tmp <- label.1
                 label.1 <- label.2
                 label.2 <- tmp
 
-                mult <- -1
+                mult <- 1
             }
 
             label <- sprintf('%s.%s',label.1,label.2)
@@ -862,14 +872,15 @@ shinyServer(function(input,output,session){
             marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
 
             rownames(marker.tab) <- marker.tab[,1]
-            colnames(marker.tab) <- c('ens_id','p-val','fc')
+            colnames(marker.tab) <- c('ens_id','p-val','fc','test.stat')
 
-            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3)],stringsAsFactors=F)
+            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4)],stringsAsFactors=F)
 
             marker.tab <- marker.tab[,c(-3)]
-            colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','p-val','log2fc')
+            colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','p-val','log2fc','test.stat')
 
             marker.tab[['log2fc']] <- as.numeric(marker.tab[['log2fc']])*mult
+            marker.tab[['test.stat']] <- as.numeric(marker.tab[['test.stat']])*mult
 
             marker.tab <- marker.tab[order(marker.tab$log2fc,decreasing=T),]
         }
@@ -1140,6 +1151,7 @@ shinyServer(function(input,output,session){
             gene.id <- input$whichGene
             sampleInputSelected <- input$sampleInputTable_rows_selected
             projection.list <- projection.getDatalist()
+            geneScale <- input$geneScale
         })
 
         ## plot.dat <- cbind(dataResults,colVarResults)
@@ -1161,6 +1173,7 @@ shinyServer(function(input,output,session){
             ## xGroup <- colorFactors
         } else if(colorFactors == 'Louvain'){
             xGroup <- louvainVec
+            xGroup <- xGroup[!is.na(xGroup)]
         } else{
             xGroup <- colVarResults
         }
@@ -1171,7 +1184,16 @@ shinyServer(function(input,output,session){
         
         if(yFactors == 'projection'){
             yGroup <- -1 * projectionVec
-            ylabel='Projection'
+
+            ## if(yTransform == 'log2gene'){
+            ##     ylabel <- 'log2(Projection)'
+            ## } else if(yTransform == 'log2gene1'){
+            ##     ylabel <- 'log2(Projection + 1)'
+            ## } else{
+            ylabel <- 'Projection'
+            ## }
+            
+            ## ylabel='Projection'
             ## print(sampleInputSelected)
             ## print(projection.list[
             plot.title=paste('Projection of ',projection.list[sampleInputSelected,'name'],sep='')
@@ -1179,11 +1201,19 @@ shinyServer(function(input,output,session){
             ## yGroup <- log10(geneVecResults+1)
             yGroup <- geneVecResults
             gene.label <- names(gene.choices)[gene.num.vec[gene.id]]
-            ylabel='log2( TPM + 1 )'
+
+            if(geneScale == 'log2gene'){
+                ylabel <- 'log2(GENE)'
+            } else if(geneScale == 'log2gene1'){
+                ylabel <- 'log2(GENE + 1)'
+            } else{
+                ylabel <- 'GENE'
+            }
+            
+            ## ylabel='log2( GENE + 1 )'
             ## ylabel <- paste('log10( TPM + 1) of ',gene.label,sep='')
             plot.title=paste('Expression of ',gene.label,sep='')
         }
-
         
         if(any(xGroup == 'All')){
             ## used.names <- names(yGroup)
@@ -1204,10 +1234,10 @@ shinyServer(function(input,output,session){
 
             group.means <- aggregate(plot.dat[,'y'],list(plot.dat[,'x']),mean)
             
-            print(log(sort(group.means$x,decreasing=T)[1:10]+1))
+            ## print(log(sort(group.means$x,decreasing=T)[1:10]+1))
 
             group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
-            print(group.means[1:10])
+            ## print(group.means[1:10])
 
             ## print(top.clus.per.genes[[gene.id]])
             
@@ -1372,12 +1402,23 @@ shinyServer(function(input,output,session){
             x.labels <- x.labels[top.groups]
 
         }
-
+        
         ## min.y <- min(subset(plot.dat,y>0)$y)
 
+        ## if(yTransform == 'log2gene'){
+        ##     plot.dat$y <- log2(plot.dat$y)
+        ##     ylabel <- sprintf('log2(%s)',ylabel)
+        ## } else if(yTransform == 'log2gene1'){
+        ##     plot.dat$y <- log2(plot.dat$y+1)
+        ##     ylabel <- sprintf('log2(%s + 1)',ylabel)
+        ## }
+
+
         output.plot <- ggplot() +
-            geom_violin(data=plot.dat,aes(x=x,y=log2(abs(y)+1),fill=x),scale='width') +
-            geom_jitter(data=plot.dat,aes(x=x,y=log2(abs(y)+1)),width=0.1,alpha=0.1,colour='gray',size=sizeVec) +
+            ## geom_violin(data=plot.dat,aes(x=x,y=log2(abs(y)+0),fill=x),scale='width') +
+            ## geom_jitter(data=plot.dat,aes(x=x,y=log2(abs(y)+0)),width=0.1,alpha=0.1,colour='gray',size=sizeVec) +
+            geom_violin(data=plot.dat,aes(x=x,y=y+0,fill=x),scale='width')+
+            geom_jitter(data=plot.dat,aes(x=x,y=y+0),width=0.1,alpha=0.1,colour='gray',size=sizeVec) +
             theme(##panel.background= element_blank(),
                 axis.text.x = element_text(size=14,angle=45,vjust=0.5),
                 axis.text.y = element_text(size=18),
@@ -1431,7 +1472,7 @@ shinyServer(function(input,output,session){
         ## color.ramp <- c('#800080','#FFFF00')
 
         color.ramp <- NULL
-        
+
         if(input$colorButton == 0 | colorFactors == 'No Coloring'){
             colVarPlot <- NULL
 
@@ -1448,13 +1489,29 @@ shinyServer(function(input,output,session){
             colVarPlot <- efoResults
 
         } else if(colorFactors == 'Gene'){
-            colVarPlot <- log2(geneVecResults+1)
+            ## colVarPlot <- log2(geneVecResults+1)
+
+            inf.gene.vals <- is.infinite(geneVecResults)
+            inf.gene.sum <- sum(inf.gene.vals)
+
+            if(inf.gene.sum > 0){
+                showNotification(sprintf('Removing %d points with -Inf gene value',inf.gene.sum),type='error',duration=10)
+            }
+            geneVecResults <- geneVecResults[!inf.gene.vals]
+            colVarPlot <- geneVecResults
+            ## colVarPlot <- colVarPlot[!is.infinite(colVarPlot)]
+            dataResults <- dataResults[names(colVarPlot),]
+
+
 
         } else if(colorFactors == 'KMeans'){
             colVarPlot <- as.factor(kmeansVec[rownames(dataResults)])
 
         } else if(colorFactors == 'Louvain'){
-            colVarPlot <- as.factor(louvainVec[rownames(dataResults)])
+            ## colVarPlot <- as.factor(louvainVec[rownames(dataResults)])
+            colVarPlot <- louvainVec[rownames(dataResults)]
+            colVarPlot[is.na(colVarPlot)] <- -1
+            colVarPlot <- as.factor(colVarPlot)
 
         } else if(colorFactors == 'Projection'){
             colVarPlot <- log2(projectionVec+1)
