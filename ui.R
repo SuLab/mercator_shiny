@@ -21,7 +21,7 @@ meta.choices <- c('No Coloring' = 'No Coloring',
 
 
 
-louvain.vec <- readRDS('data/leiden_pc3sd_r25e-3_vec.RDS')
+louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_mrmnorm_k40_sim_nosingles.RDS')
 naked.louvain.choices <- sort(unique(louvain.vec))
 louvain.choices <- sapply(naked.louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
 names(louvain.choices) <- louvain.choices
