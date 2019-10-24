@@ -32,8 +32,8 @@ shinyServer(function(input,output,session){
 
     ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_pc3sd_filteredp40.RDS')
     ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_pc3sd_mrmnorm.RDS')
-    tsne.data <- readRDS('data/mrmnorm_tsne_p80_nv750.RDS')
-    ## tsne.data <- readRDS('data/tsne_recount_pc3sd_poscounts_p175_nv750.RDS')
+    ## tsne.data <- readRDS('data/mrmnorm_tsne_p80_nv750.RDS')
+    tsne.data <- readRDS('data/tsne_recount_pc3sd_poscounts_p175_nv750.RDS')
     tsne.data <- tsne.data + matrix(data=rnorm(2*nrow(tsne.data),sd=0.5),ncol=2)
 
     tsne.order <- rownames(tsne.data)
@@ -66,8 +66,8 @@ shinyServer(function(input,output,session){
     gene.choices <- readRDS('data/shiny_gene_choice_list.RDS')
     gene.num.vec <- readRDS('data/shiny_gene_num_vec.RDS')
     ## louvain.vec <- readRDS('data/leiden_pc3sd_mrmnorm_r25e-3_vec.RDS')
-    louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_mrmnorm_k40_sim_nosingles.RDS')
-    ## louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_poscounts_k40_sim_nosingles.RDS')
+    ## louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_mrmnorm_k40_sim_nosingles.RDS')
+    louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_poscounts_k40_sim_nosingles.RDS')
     louvain.choices <- sort(unique(louvain.vec))
     louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
     names(louvain.choices) <- louvain.choices
@@ -437,7 +437,6 @@ shinyServer(function(input,output,session){
 
         }
 
-
         progress <- shiny::Progress$new()
 
         on.exit(progress$close())
@@ -446,9 +445,15 @@ shinyServer(function(input,output,session){
 
         ## saveRDS(input$gene.vec,'../../data/tmp/input.RDS')
 
-        map.dat <- readRDS('data/recount_750_dim_noProj_over50_bulkOnly_pc3sd_filtered.RDS')
-        rotation.dat <- readRDS('data/recount_all_big_irlba_750_over50_bulkOnly_pc3sd_filtered_rotmat.RDS')
-        map.centers <- readRDS('data/recount_over50_bulkOnly_pc3sd_filtered_colparams.RDS')
+        print(Sys.time())
+
+        map.dat <- readRDS('data/recount_750_dim_noProj_over50_pc3sd_poscounts.RDS')
+        rotation.dat <- readRDS('data/recount_all_big_irlba_750_over50_pc3sd_poscounts_rotmat.RDS')
+        map.centers <- readRDS('data/recount_over50_bulkOnly_pc3sd_poscounts_colparams.RDS')
+        gene.means <- readRDS('data/recount_over50_pc3sd_geoMeansNZ.RDS')
+
+        print(Sys.time())
+
         map.centers <- subset(map.centers,vars>0)
 
         gene.dat <- read.table(input$gene.vec$datapath,sep='\t',header=T)
@@ -458,14 +463,19 @@ shinyServer(function(input,output,session){
         rownames(dist.mat) <- rownames(map.dat)
         colnames(dist.mat) <- colnames(gene.dat)
 
-        no_cores <- detectCores() - 1
-        cl <- makeCluster(no_cores)
+        ## no_cores <- detectCores() - 1
+        ## cl <- makeCluster(no_cores)
 
         for(col in colnames(gene.dat)){
-    
+
+            print(Sys.time())
 
             gene.vec <- gene.dat[[col]]
             names(gene.vec) <- rownames(gene.dat)
+
+            gene.ratios <- gene.vec / gene.means
+            size.factor <- median(gene.ratios)
+            gene.vec <- gene.vec / size.factor
 
             center.vec <- gene.vec - map.centers$means
             center.vec <- center.vec / map.centers$vars
@@ -477,12 +487,13 @@ shinyServer(function(input,output,session){
             ## dist.vec <- parApply(cl,map.dat,1,getDistance,gene.vec=rot.vec)
 
             dist.mat[,col] <- dist.vec
+
+            print(Sys.time())
         }
 
-        stopCluster(cl)
+        ## stopCluster(cl)
 
         progress$set(message='Calculated', value=0.67)
-
 
         dat.rows <- rownames(data())
 
@@ -841,17 +852,17 @@ shinyServer(function(input,output,session){
             marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
 
             rownames(marker.tab) <- marker.tab[,1]
-            colnames(marker.tab) <- c('ens_id','unique','p-val','unique-fcs','total-fcs')
+            colnames(marker.tab) <- c('ens_id','unique','p-val','unique-fcs','total-fcs','stat')
 
-            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4,5)],stringsAsFactors=F)            
+            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4,5,6)],stringsAsFactors=F)            
 
             marker.tab <- marker.tab[,c(-3)]
-            colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','unique','p-val','unique-fcs','total-fcs')
+            colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','unique','p-val','unique-fcs','total-fcs','stat')
 
             marker.tab[['unique-fcs']] <- as.numeric(marker.tab[['unique-fcs']])
             marker.tab[['total-fcs']] <- as.numeric(marker.tab[['total-fcs']])
 
-            marker.tab <- marker.tab[order(marker.tab[['unique-fcs']],decreasing=T),]
+            ## marker.tab <- marker.tab[order(marker.tab[['unique-fcs']],decreasing=T),]
         }
         else if(input$geneGroup == input$geneGroupSecond){
             return(subset(data.frame('name'=c(1,2),'min'=c(2,3)),name>3)) ## TODO modify to have all columns
@@ -887,7 +898,7 @@ shinyServer(function(input,output,session){
             marker.tab[['log2fc']] <- as.numeric(marker.tab[['log2fc']])*mult
             marker.tab[['test.stat']] <- as.numeric(marker.tab[['test.stat']])*mult
 
-            marker.tab <- marker.tab[order(marker.tab$log2fc,decreasing=T),]
+            marker.tab <- marker.tab[order(marker.tab$test.stat,decreasing=T),]
         }
 
         ## label.2 <- as.numeric(input$geneGroupSecond)+1

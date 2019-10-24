@@ -21,7 +21,8 @@ meta.choices <- c('No Coloring' = 'No Coloring',
 
 
 
-louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_mrmnorm_k40_sim_nosingles.RDS')
+## louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_mrmnorm_k40_sim_nosingles.RDS')
+louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_poscounts_k40_sim_nosingles.RDS')
 naked.louvain.choices <- sort(unique(louvain.vec))
 louvain.choices <- sapply(naked.louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
 names(louvain.choices) <- louvain.choices
@@ -119,7 +120,7 @@ fluidPage(
                   tags$div(class='panel panel-primary',
                            tags$div(class='panel-heading',id='controlPanelHeading',
                                     
-                                    useShinyjs(),                           
+                                    useShinyjs(),
                                     h3("Plot Controls",class='panel-title'),
                                     tags$span(class='pull-right clickable',id='controlPanelClickable',tags$i(class='glyphicon glyphicon-chevron-up'))
                                     ),
