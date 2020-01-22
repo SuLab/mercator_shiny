@@ -28,13 +28,16 @@ shinyServer(function(input,output,session){
         range = c(-55,55)
     )
 
-    ## mercator.db.con <- dbConnect(odbc(),'PostgreSQL')
+    ## tsne.data <- readRDS('../../results/recount/tsne/recount_tsne_list_pca_noNAs_pcinit_eta200_over50_pc3sd_poscounts_log.RDS')[['30.50']]
 
-    ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_bulkOnly_pc3sd_filteredp40.RDS')
-    ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_over50_pc3sd_mrmnorm.RDS')
-    ## tsne.data <- readRDS('data/mrmnorm_tsne_p80_nv750.RDS')
-    tsne.data <- readRDS('data/tsne_recount_pc3sd_poscounts_p175_nv750.RDS')
-    tsne.data <- tsne.data + matrix(data=rnorm(2*nrow(tsne.data),sd=0.5),ncol=2)
+    ## tsne.data <- readRDS('data/tsne_recount_pc3sd_poscounts_p175_nv750.RDS')
+    ## tsne.data <- readRDS('../../results/recount/tmp/tsne_over50_poscounts_log_combp_30_250.RDS')
+
+    tsne.data <- readRDS('data/recount_tsne_pca_noNAs_pcinit_eta2875_over50_pc3sd_tpm_log_p60_nv750.RDS')
+
+    ## tsne.data <- readRDS('../../results/recount/tsne/recount_tsne_list_pca_pcinit_eta2875_over50_pc3sd_tpm_log_90th_var_genes.RDS')[['60.100']]
+    
+    ## tsne.data <- tsne.data + matrix(data=rnorm(2*nrow(tsne.data),sd=0.5),ncol=2)
 
     tsne.order <- rownames(tsne.data)
 
@@ -42,44 +45,38 @@ shinyServer(function(input,output,session){
     rownames(tsne.meta) <- tsne.meta$run_id
     tsne.meta <- tsne.meta[tsne.order,]
 
-    ## tcga.gtex.meta <- readRDS('data/gtex_tcga_meta.RDS')
     tcga.gtex.meta <- readRDS('data/tcga_gtex_meta_edited_histologies.RDS')
 
-    ## print(head(tcga.gtex.meta))
-    
     rownames(tcga.gtex.meta) <- tcga.gtex.meta$data_id
     tcga.gtex.meta <- tcga.gtex.meta[tsne.order,]
 
-    ## print(head(tcga.gtex.meta))
-
     tsne.meta <- cbind(tsne.meta,tcga.gtex.meta[,c('tissue_general','tissue_detail')])
 
-    ## tcga.case.ids <- readRDS('data/pheno_case_ids.RDS')
-    ## rownames(tcga.case.ids) <- tcga.case.ids$bigwig_file
-    
-    ## tcga.case.ids <- tcga.case.ids[tsne.order,]
-    ## tsne.meta <- cbind(tsne.meta,tcga.case.ids$gdc_cases.case_id)
-
-    ## gene.tpm.samps <- readRDS('data/tpm_mat_rownames.RDS')
     gene.tpm.samps <- readRDS('data/mrmnorm_mat_rownames.RDS')
 
     gene.choices <- readRDS('data/shiny_gene_choice_list.RDS')
     gene.num.vec <- readRDS('data/shiny_gene_num_vec.RDS')
-    ## louvain.vec <- readRDS('data/leiden_pc3sd_mrmnorm_r25e-3_vec.RDS')
-    ## louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_mrmnorm_k40_sim_nosingles.RDS')
-    louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_poscounts_k40_sim_nosingles.RDS')
+
+    ## louvain.dat <- read.table('../../results/recount/clustering/leiden_rsweep_pca_over50_pc3sd_tpm_log_k20_sim.tsv',sep='\t',row.names=1)
+    ## colnames(louvain.dat) <- c('0.1', '0.075', '0.05', '0.025', '0.01', '0.0075', '0.005', '0.0025', '0.001', '0.00075', '0.0005', '0.00025', '0.00001') 
+    ## louvain.dat <- read.table('../../results/recount/clustering/leiden_rsweep_narrow_pca_over50_pc3sd_tpm_log_k20_sim.tsv',sep='\t',row.names=1)
+    ## colnames(louvain.dat) <- c('0.005','0.0045','0.004','0.0035','0.003','0.0025')
+
+    ## louvain.vec <- louvain.dat[,'0.004']
+    ## names(louvain.vec) <- tsne.order
+    ## louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_poscounts_k40_sim_nosingles.RDS')
+    louvain.vec <- readRDS('data/leiden_pca_r5e-3_pc3sd_tpm_log_k20_sim_nosingles.RDS')
+    ## louvain.vec <- readRDS('data/leiden_r25e-3_pc3sd_tpm_log_k40_sim_nosingles.RDS')
     louvain.choices <- sort(unique(louvain.vec))
     louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
     names(louvain.choices) <- louvain.choices
 
-    ## top.clus.per.genes <- readRDS('data/leiden_pc3sd_r25e-3_markers_top_clus.RDS')
-
     cellmarker.info <- readRDS('data/cell_marker_gene_table_fixed_ens.RDS')
     rownames(cellmarker.info) <- cellmarker.info$V3
 
-    ## marker.list <- readRDS('data/pairwise_leiden_r25e-3_marker_list_filtered_5th_perc_shiny.RDS') 
-
     cellmarker.annotation.counts <- readRDS('data/cell_marker_annotations_marker_counts.RDS')
+
+    wgcna.dat <- readRDS('data/wgcna_app_table_pos_log_pc3sd_min100_ds2.RDS')
 
     user.selections <- reactiveValues(
         selection.list = list(),
@@ -173,7 +170,21 @@ shinyServer(function(input,output,session){
     })
 
 
+    observeEvent(input$wgcnaGeneTable_rows_selected, {
 
+        selected.gene <- getWgcnaGeneTable()[input$wgcnaGeneTable_rows_selected,3]
+
+        updateSelectizeInput(session,
+                             'whichGene',
+                             choices = gene.choices,
+                             server=T,
+                             options=list(maxOptions=10,
+                                          closeAfterSelect=T
+                                          ),
+                             selected=gene.choices[gene.num.vec[selected.gene]]
+                             )
+
+    })
 
     observeEvent(input$geneTable_rows_selected, {
 
@@ -253,7 +264,47 @@ shinyServer(function(input,output,session){
                                 )
         return(dataDT)
     })
+
+    output$wgcnaGeneTable <- DT::renderDT({
+
+        wgcna.tab <- getWgcnaGeneTable()
+
+        ## dataDT <- DT::datatable(wgcna.tab[,c(11,9,10,4,5,6,7,8)],
+        dataDT <- DT::datatable(wgcna.tab[,c(11,9,10,4)],
+                                selection='single',
+                                options=list(
+                                    'searching'=TRUE,
+                                    'legnthChange'=FALSE,
+                                    'pagingType'='full',
+                                    'autoWidth'=TRUE,
+                                    'pageLength'=25),
+                                escape=FALSE,
+                                rownames=FALSE
+                                )
+
+        return(dataDT)
+    })
                                                                 
+    output$wgcnaGoTable <- DT::renderDT({
+
+        go.tab <- getWgcnaGoTable()
+
+        dataDT <- DT::datatable(go.tab,
+                                selection='none',
+                                options=list(
+                                    'searching'=TRUE,
+                                    'legnthChange'=FALSE,
+                                    'pagingType'='full',
+                                    'autoWidth'=TRUE,
+                                    'pageLength'=25),
+                                escape=FALSE,
+                                rownames=FALSE
+                                )
+
+        return(dataDT)
+
+    })
+
     output$geneTable <- DT::renderDT({
 
         ## if(input$geneGroup == 'all'){
@@ -288,7 +339,6 @@ shinyServer(function(input,output,session){
         marker.tab <- getGeneTable()
 
         if(nrow(marker.tab) > 0){
-
             marker.tab <- marker.tab[,c(10,8,9,3,4,5,6,7,11:ncol(marker.tab))]
         }
 
@@ -401,7 +451,7 @@ shinyServer(function(input,output,session){
 
     observeEvent(input$topNavBar, {
 
-        if(input$topNavBar == 'genePanel' | input$topNavBar == 'samplePanel'){
+        if(input$topNavBar == 'genePanel' | input$topNavBar == 'samplePanel' | input$topNavBar == 'wgcnaPanel'){
             
             runjs(" var $this = $('#controlPanelClickable');
                     if(!$this.hasClass('panel-collapsed')) {
@@ -411,7 +461,7 @@ shinyServer(function(input,output,session){
                     }")
 
         }
-        else if(user.selections$previous.tab == 'genePanel' | user.selections$previous.tab == 'samplePanel'){
+        else if(user.selections$previous.tab == 'genePanel' | user.selections$previous.tab == 'samplePanel' | user.selections$previous.tab == 'wgcnaPanel'){
 
             runjs(" var $this = $('#controlPanelClickable');
                     if($this.hasClass('panel-collapsed')) {
@@ -428,7 +478,9 @@ shinyServer(function(input,output,session){
 
         getDistance <- function(x,gene.vec) {
 
-            eu.dist <- sum((x - gene.vec)^2)            
+            ## eu.dist <- sum((x - gene.vec)^2)
+
+            eu.dist <- cor(x,gene.vec[1,],method='pearson')
             ## eu.dist <- cor(x,gene.vec,method='spearman')
 
             ## eu.dist <- (x %*% gene.vec) / (norm(x,'2') * norm(gene.vec,'2'))
@@ -443,39 +495,42 @@ shinyServer(function(input,output,session){
 
         progress$set(message='Calculating...', value=0.33)
 
-        ## saveRDS(input$gene.vec,'../../data/tmp/input.RDS')
+        ## map.dat <- readRDS('data/recount_750_dim_noProj_over50_pc3sd_poscounts.RDS')
+        ## rotation.dat <- readRDS('data/recount_all_big_irlba_750_over50_pc3sd_poscounts_rotmat.RDS')
+        ## map.centers <- readRDS('data/recount_over50_bulkOnly_pc3sd_poscounts_colparams.RDS')
+        ## gene.means <- readRDS('data/recount_over50_pc3sd_geoMeansNZ.RDS')
 
-        print(Sys.time())
-
-        map.dat <- readRDS('data/recount_750_dim_noProj_over50_pc3sd_poscounts.RDS')
-        rotation.dat <- readRDS('data/recount_all_big_irlba_750_over50_pc3sd_poscounts_rotmat.RDS')
-        map.centers <- readRDS('data/recount_over50_bulkOnly_pc3sd_poscounts_colparams.RDS')
-        gene.means <- readRDS('data/recount_over50_pc3sd_geoMeansNZ.RDS')
-
-        print(Sys.time())
+        map.dat <- readRDS('data/recount_750_dim_noProj_over50_pc3sd_tpm_log.RDS')
+        rotation.dat <- readRDS('data/recount_all_big_irlba_750_over50_pc3sd_tpm_log_rotmat.RDS')
+        map.centers <- readRDS('data/recount_over50_pc3sd_colparams_tpm_log.RDS')
+        gene.lens <- read.table('data/ensembl_gene_lengths.tsv',sep='\t',stringsAsFactors=F,row.names=1)
 
         map.centers <- subset(map.centers,vars>0)
+        gene.lens <- gene.lens[rownames(map.centers),]
 
         gene.dat <- read.table(input$gene.vec$datapath,sep='\t',header=T)
         gene.dat <- gene.dat[rownames(map.centers),,drop=F]
+        input.names <- colnames(gene.dat)
+
+        gene.dat <- gene.dat / gene.lens
+        normFactors <- colSums(gene.dat)
+        gene.dat <- 1e6 * data.matrix(gene.dat) %*% diag(1/normFactors,nrow=length(normFactors))
+        gene.dat <- log(gene.dat+1)
+        colnames(gene.dat) <- input.names
 
         dist.mat <- matrix(0,nrow=nrow(map.dat),ncol=ncol(gene.dat))
         rownames(dist.mat) <- rownames(map.dat)
         colnames(dist.mat) <- colnames(gene.dat)
 
-        ## no_cores <- detectCores() - 1
-        ## cl <- makeCluster(no_cores)
-
         for(col in colnames(gene.dat)){
 
-            print(Sys.time())
-
-            gene.vec <- gene.dat[[col]]
+            ## gene.vec <- gene.dat[[col]]
+            gene.vec <- gene.dat[,col,drop=F]
             names(gene.vec) <- rownames(gene.dat)
 
-            gene.ratios <- gene.vec / gene.means
-            size.factor <- median(gene.ratios)
-            gene.vec <- gene.vec / size.factor
+            ## gene.ratios <- gene.vec / gene.means
+            ## size.factor <- median(gene.ratios[is.finite(gene.ratios) & gene.ratios > 0])
+            ## gene.vec <- gene.vec / size.factor
 
             center.vec <- gene.vec - map.centers$means
             center.vec <- center.vec / map.centers$vars
@@ -484,14 +539,9 @@ shinyServer(function(input,output,session){
 
             dist.vec <- apply(map.dat,1,getDistance,gene.vec=rot.vec)
 
-            ## dist.vec <- parApply(cl,map.dat,1,getDistance,gene.vec=rot.vec)
-
             dist.mat[,col] <- dist.vec
 
-            print(Sys.time())
         }
-
-        ## stopCluster(cl)
 
         progress$set(message='Calculated', value=0.67)
 
@@ -501,12 +551,12 @@ shinyServer(function(input,output,session){
 
         for(col in colnames(dist.mat)){
 
-            ## dist.vec <- dist.mat[[col]]
             dist.vec <- dist.mat[,col]
             names(dist.vec) <- rownames(dist.mat)
 
             user.selections$gene.input.results[[length(user.selections$gene.input.results)+1]] <- dist.vec
-            user.selections$gene.input.datalist <- rbind(user.selections$gene.input.datalist,data.frame('name'=col,'min'=min(log2(dist.vec+1))))
+            ## user.selections$gene.input.datalist <- rbind(user.selections$gene.input.datalist,data.frame('name'=col,'min'=min(log2(dist.vec+1))))
+            user.selections$gene.input.datalist <- rbind(user.selections$gene.input.datalist,data.frame('name'=col,'max'=max(dist.vec)))
         }
 
         progress$set(message='Read results',value=1)
@@ -841,6 +891,27 @@ shinyServer(function(input,output,session){
 
     })
 
+    getWgcnaGoTable <- reactive({
+
+        go.tab <- wgcna.dat[['cats']][[input$wgcnaTabControl]]
+
+        colnames(go.tab) <- c('Category','Term','Ontology','p-val')
+
+        return(go.tab)
+
+    })
+
+    getWgcnaGeneTable <- reactive({
+
+        gene.tab <- wgcna.dat[['genes']][[input$wgcnaTabControl]]
+
+        colnames(gene.tab) <- c('Symbol','ID','Ensembl','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID')
+
+        return(gene.tab)
+        ## return(gene.tab[,c(11,9,10,4,5,6,7,8)])
+
+    })
+
     getGeneTable <- reactive({
 
         if(input$geneGroupSecond == 'all'){
@@ -886,14 +957,15 @@ shinyServer(function(input,output,session){
             marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
 
             rownames(marker.tab) <- marker.tab[,1]
-            ## colnames(marker.tab) <- c('ens_id','p-val','fc','test.stat')
-            colnames(marker.tab) <- c('ens_id','p-val','fc','test.stat','wilcox')
-            
+            colnames(marker.tab) <- c('ens_id','p-val','fc','test.stat')
+            ## colnames(marker.tab) <- c('ens_id','p-val','fc','test.stat','wilcox')
 
-            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4,5)],stringsAsFactors=F)
+            ## marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4,5)],stringsAsFactors=F)
+            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4)],stringsAsFactors=F)
 
             marker.tab <- marker.tab[,c(-3)]
-            colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','p-val','log2fc','test.stat','scaled wilcox stat')
+            ## colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','p-val','log2fc','test.stat','scaled wilcox stat')
+            colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','p-val','log2fc','test.stat')
 
             marker.tab[['log2fc']] <- as.numeric(marker.tab[['log2fc']])*mult
             marker.tab[['test.stat']] <- as.numeric(marker.tab[['test.stat']])*mult
@@ -1558,7 +1630,8 @@ shinyServer(function(input,output,session){
             colVarPlot <- as.factor(colVarPlot)
 
         } else if(colorFactors == 'Projection'){
-            colVarPlot <- log2(projectionVec+1)
+            ## colVarPlot <- log2(projectionVec+1)
+            colVarPlot <- projectionVec
             ## colVarPlot <- -1*projectionVec
 
             ## bottom.ramp <- colorRampPalette(c('#D73027','#FFFFBF'))
@@ -1591,13 +1664,13 @@ shinyServer(function(input,output,session){
 
             ## mid.point <- round((mean(colVarPlot) - min(colVarPlot)) / (max(colVarPlot) - min(colVarPlot)) * 100)
 
-            color.ramp <- c(bottom.ramp(mid.point),top.ramp(100-mid.point))
+            ## color.ramp <- c(bottom.ramp(mid.point),top.ramp(100-mid.point))
 
-            sample.min.point <- round((min(colVarPlot) - min.point) / (max.point - min.point)*100)
+            ## sample.min.point <- round((min(colVarPlot) - min.point) / (max.point - min.point)*100)
 
             ## print(sample.min.point)
 
-            color.ramp <- color.ramp[sample.min.point:100]
+            ## color.ramp <- color.ramp[sample.min.point:100]
             
         }
         else{
