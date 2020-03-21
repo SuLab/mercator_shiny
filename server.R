@@ -19,23 +19,16 @@ library(odbc)
 
 shinyServer(function(input,output,session){  
 
-    ax <- list(
-        title = "",
-        zeroline = FALSE,
-        showline = FALSE,
-        showticklabels = FALSE,
-        showgrid = FALSE,
-        range = c(-55,55)
-    )
-
     ## tsne.data <- readRDS('../../results/recount/tsne/recount_tsne_list_pca_noNAs_pcinit_eta200_over50_pc3sd_poscounts_log.RDS')[['30.50']]
 
     ## tsne.data <- readRDS('data/tsne_recount_pc3sd_poscounts_p175_nv750.RDS')
     ## tsne.data <- readRDS('../../results/recount/tmp/tsne_over50_poscounts_log_combp_30_250.RDS')
 
-    tsne.data <- readRDS('data/recount_tsne_pca_noNAs_pcinit_eta2875_over50_pc3sd_tpm_log_p60_nv750.RDS')
+    ## tsne.data <- readRDS('data/recount_tsne_pca_noNAs_pcinit_eta2875_over50_pc3sd_tpm_log_p60_nv750.RDS')
 
-    ## tsne.data <- readRDS('../../results/recount/tsne/recount_tsne_list_pca_pcinit_eta2875_over50_pc3sd_tpm_log_90th_var_genes.RDS')[['60.100']]
+    ## tsne.data <- readRDS('../../results/recount/tsne/recount_tsne_list_pca_pcinit_eta2875_over50_pc3sd_tpm_log_90th_var_genes.RDS')[['40.100']]
+    ## tsne.data <- readRDS('../../results/recount/tsne/recount_tsne_list_pca_noNAs_pcinit_eta2875_over50_pc3sd_tpm_log.RDS')[['60.100']]
+    tsne.data <- readRDS('data/recount_tsne_pca_pcinit_eta2875_over50_pc3sd_tpm_log_90th_var_genes_p40_nv100.RDS')
     
     ## tsne.data <- tsne.data + matrix(data=rnorm(2*nrow(tsne.data),sd=0.5),ncol=2)
 
@@ -57,16 +50,23 @@ shinyServer(function(input,output,session){
     gene.choices <- readRDS('data/shiny_gene_choice_list.RDS')
     gene.num.vec <- readRDS('data/shiny_gene_num_vec.RDS')
 
-    ## louvain.dat <- read.table('../../results/recount/clustering/leiden_rsweep_pca_over50_pc3sd_tpm_log_k20_sim.tsv',sep='\t',row.names=1)
-    ## colnames(louvain.dat) <- c('0.1', '0.075', '0.05', '0.025', '0.01', '0.0075', '0.005', '0.0025', '0.001', '0.00075', '0.0005', '0.00025', '0.00001') 
+    ## louvain.dat <- read.table('../../results/recount/clustering/leiden_rsweep_pca_over50_pc3sd_tpm_log_nv100_narrow_90th_var_genes_k30_sim.tsv',sep='\t',row.names=1)
+    ## ## colnames(louvain.dat) <- c('0.1', '0.075', '0.05', '0.025', '0.01', '0.0075', '0.005', '0.0025', '0.001', '0.00075', '0.0005', '0.00025', '0.00001')
+    ## ## colnames(louvain.dat) <- c('0.1','0.11','0.15','0.175','0.2')
+    ## colnames(louvain.dat) <- c('0.007', '0.0075', '0.008', '0.0085', '0.009', '0.0095', '0.01', '0.0105', '0.011', '0.0115', '0.012', '0.0125', '0.013')
     ## louvain.dat <- read.table('../../results/recount/clustering/leiden_rsweep_narrow_pca_over50_pc3sd_tpm_log_k20_sim.tsv',sep='\t',row.names=1)
-    ## colnames(louvain.dat) <- c('0.005','0.0045','0.004','0.0035','0.003','0.0025')
+    ## louvain.dat <- read.table('../../results/recount/clustering/leiden_rsweep_narrow_pca_over50_pc3sd_tpm_log_nv100_k30_sim.tsv',sep='\t',row.names=1)
+    ## ## colnames(louvain.dat) <- c('0.005','0.0045','0.004','0.0035','0.003','0.0025')
+    ## colnames(louvain.dat) <- c('0.03','0.0275','0.025','0.0225','0.02','0.0175','0.015','0.0125','0.01')
+    ## colnames(louvain.dat) <- c('0.1', '0.075', '0.05', '0.025', '0.01', '0.0075', '0.005', '0.0025', '0.001', '0.00075', '0.0005', '0.00025', '0.00001') 
 
-    ## louvain.vec <- louvain.dat[,'0.004']
+    ## louvain.vec <- louvain.dat[,'0.009']
     ## names(louvain.vec) <- tsne.order
+    louvain.vec <- readRDS('data/leiden_r9e-3_over50_pc3sd_tpm_log_k30_sim_90th_var_genes.RDS')
     ## louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_poscounts_k40_sim_nosingles.RDS')
-    louvain.vec <- readRDS('data/leiden_pca_r5e-3_pc3sd_tpm_log_k20_sim_nosingles.RDS')
+    ## louvain.vec <- readRDS('data/leiden_pca_r5e-3_pc3sd_tpm_log_k20_sim_nosingles.RDS')
     ## louvain.vec <- readRDS('data/leiden_r25e-3_pc3sd_tpm_log_k40_sim_nosingles.RDS')
+    ## louvain.vec <- readRDS('data/leiden_r9e-3_over50_pc3sd_tpm_log_k30_sim_90th_var_genes.RDS')
     louvain.choices <- sort(unique(louvain.vec))
     louvain.choices <- sapply(louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
     names(louvain.choices) <- louvain.choices
@@ -87,7 +87,6 @@ shinyServer(function(input,output,session){
         previous.tab = 't-SNE'
     )
 
-
     updateSelectizeInput(session,
                          'whichGene',
                          choices=gene.choices,
@@ -96,8 +95,6 @@ shinyServer(function(input,output,session){
                                       closeAfterSelect=TRUE
                                       )
                          )
-
-
 
     projection.getDatalist <- reactive({
 
@@ -1508,12 +1505,15 @@ shinyServer(function(input,output,session){
         if(yFactors == 'gene'){
             if(geneScale == 'log2gene'){
                 ylabel <- 'log2(GENE)'
-                plot.dat$y <- log2(plot.dat$y)
+                ## plot.dat$y <- log2(plot.dat$y)
+                plot.dat$y <- log2(2^(plot.dat$y)-1)
             } else if(geneScale == 'log2gene1'){
                 ylabel <- 'log2(GENE + 1)'
-                plot.dat$y <- log2(plot.dat$y+1)
+                ## plot.dat$y <- log2(plot.dat$y+1)
+                ## plot.dat$y <- plot.dat$y
             } else{
                 ylabel <- 'GENE'
+                plot.day$y <- 2^(plot.dat$y) - 1
             }
         }
 
@@ -1569,9 +1569,9 @@ shinyServer(function(input,output,session){
             ## input$tree
             ## input$colorfactors
             markerSize <- input$markerSize
-            geneScale <- input$geneScale            
+            geneScale <- input$geneScale
+            layout.dat <- event_data('plotly_relayout',source='tsne')            
         })
-
 
         ## print(colorFactors)
 
@@ -1600,12 +1600,16 @@ shinyServer(function(input,output,session){
             if(geneScale == 'log2gene'){
                 ## ylabel <- 'log2(GENE)'
                 geneVecResults <- log2(geneVecResults)
+                geneVecResults <- log2(2^geneVecResults -1 )
             } else if(geneScale == 'log2gene1'){
                 ## ylabel <- 'log2(GENE + 1)'
-                geneVecResults <- log2(geneVecResults + 1)
-            } ## else{
-            ##     ylabel <- 'GENE'
-            ## }
+                ## geneVecResults <- log2(geneVecResults + 1)
+                geneVecResults <- geneVecResults
+            }
+            else{
+                geneVecResults <- 2^geneVecResults - 1
+                ## ylabel <- 'GENE'
+            }
 
             inf.gene.vals <- is.infinite(geneVecResults)
             inf.gene.sum <- sum(inf.gene.vals)
@@ -1739,6 +1743,39 @@ shinyServer(function(input,output,session){
             })
         }
 
+        if(is.null(layout.dat)){
+            
+            ax.x <- ax.y <- list(
+                title = "",
+                zeroline = FALSE,
+                showline = FALSE,
+                showticklabels = FALSE,
+                showgrid = FALSE,
+                range = c(-110,110)
+            )
+            
+        }
+        else{
+
+            ax.x <- list(
+                title = "",
+                zeroline = FALSE,
+                showline = FALSE,
+                showticklabels = FALSE,
+                showgrid = FALSE,
+                range=c(layout.dat[['xaxis.range[0]']],layout.dat[['xaxis.range[1]']]))
+
+            ax.y <- list(
+                title = "",
+                zeroline = FALSE,
+                showline = FALSE,
+                showticklabels = FALSE,
+                showgrid = FALSE,
+                range=c(layout.dat[['yaxis.range[0]']],layout.dat[['yaxis.range[1]']]))
+
+        }
+
+
         output.plot <- plot_ly(dataResults, x = ~y1, y = ~y2,mode="markers",type='scattergl',color = colVarPlot,
                                colors=color.ramp,
                                hoverinfo='text',
@@ -1759,8 +1796,8 @@ shinyServer(function(input,output,session){
             ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
             ## config(collaborate=FALSE) %>%
             layout(dragmode = "pan",
-                   xaxis=ax,
-                   yaxis=ax,
+                   xaxis=ax.x,
+                   yaxis=ax.y,
                    legend=list(font=list(family='sans-serif',size=11))) ## %>%
 
         output.plot
