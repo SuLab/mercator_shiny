@@ -23,12 +23,13 @@ meta.choices <- c('No Coloring' = 'No Coloring',
 
 ## louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_mrmnorm_k40_sim_nosingles.RDS')
 ## louvain.vec <- readRDS('data/leiden_r25e-3_over50_pc3sd_poscounts_k40_sim_nosingles.RDS')
-louvain.vec <- readRDS('data/leiden_pca_r5e-3_pc3sd_tpm_log_k20_sim_nosingles.RDS')
+## louvain.vec <- readRDS('data/leiden_pca_r5e-3_pc3sd_tpm_log_k20_sim_nosingles.RDS')
+louvain.vec <- readRDS('data/leiden_r9e-3_over50_pc3sd_tpm_log_k30_sim_90th_var_genes.RDS')
 naked.louvain.choices <- sort(unique(louvain.vec))
 louvain.choices <- sapply(naked.louvain.choices,function(x) sprintf('Louvain Cluster %s',x))
 names(louvain.choices) <- louvain.choices
 
-wgcna.choices <- readRDS('data/wgcna_app_choices_pos_log_pc3sd_min100_ds2.RDS')
+## wgcna.choices <- readRDS('data/wgcna_app_choices_pos_log_pc3sd_min100_ds2.RDS')
 
 fluidPage(
     includeCSS('styles.css'),
@@ -112,27 +113,27 @@ fluidPage(
                                       DT::DTOutput('sampleTable',width='90%')
                                       )
                         
-                        ),
-               tabPanel('Gene Clustering',value='wgcnaPanel',
+                        )## ,
+               ## tabPanel('Gene Clustering',value='wgcnaPanel',
 
-                        absolutePanel(fixed=FALSE,draggable=FALSE,top=72,left=435, right='auto', bottom='auto',width='auto',height='auto',
-                                      tags$label(class='control-label','Gene Cluster #')
-                                      ),
-                        absolutePanel(fixed=FALSE,draggable=FALSE,top=42,left=550,right='auto',bottom='auto',width='auto',height='auto',
-                                      selectInput('wgcnaTabControl',
-                                                  label='',
-                                                  choices = c(wgcna.choices),
-                                                  multiple=FALSE,
-                                                  selected=1)
-                                      ),
-                        absolutePanel(id='results',fixed=FALSE,draggable=FALSE,top=120,left=50,right='auto',bottom='auto',width=600,height='auto',
-                                      DT::DTOutput('wgcnaGeneTable',width='90%')
-                                      ),
-                        absolutePanel(id='results',fixed=FALSE,draggable=FALSE,top=120,left=675,right='auto',bottom='auto',width=600,height='auto',
-                                      DT::DTOutput('wgcnaGoTable',width='90%')
-                                      )
+               ##          absolutePanel(fixed=FALSE,draggable=FALSE,top=72,left=435, right='auto', bottom='auto',width='auto',height='auto',
+               ##                        tags$label(class='control-label','Gene Cluster #')
+               ##                        ),
+               ##          absolutePanel(fixed=FALSE,draggable=FALSE,top=42,left=550,right='auto',bottom='auto',width='auto',height='auto',
+               ##                        selectInput('wgcnaTabControl',
+               ##                                    label='',
+               ##                                    choices = c(wgcna.choices),
+               ##                                    multiple=FALSE,
+               ##                                    selected=1)
+               ##                        ),
+               ##          absolutePanel(id='results',fixed=FALSE,draggable=FALSE,top=120,left=50,right='auto',bottom='auto',width=600,height='auto',
+               ##                        DT::DTOutput('wgcnaGeneTable',width='90%')
+               ##                        ),
+               ##          absolutePanel(id='results',fixed=FALSE,draggable=FALSE,top=120,left=675,right='auto',bottom='auto',width=600,height='auto',
+               ##                        DT::DTOutput('wgcnaGoTable',width='90%')
+               ##                        )
 
-                        )
+                        ## )
                ),
     
     absolutePanel(id='controlPanel', fixed=FALSE, draggable=TRUE, top=60, left=20, right='auto', bottom='auto', width=400, height='auto',

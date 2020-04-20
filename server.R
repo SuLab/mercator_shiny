@@ -34,16 +34,18 @@ shinyServer(function(input,output,session){
 
     tsne.order <- rownames(tsne.data)
 
-    tsne.meta <- readRDS('data/recount_meta_sampletype_urls.RDS')
-    rownames(tsne.meta) <- tsne.meta$run_id
-    tsne.meta <- tsne.meta[tsne.order,]
+    tsne.meta <- readRDS('data/recount2_meta_edited_hist_pc3sd_over50.RDS')
 
-    tcga.gtex.meta <- readRDS('data/tcga_gtex_meta_edited_histologies.RDS')
+    ## tsne.meta <- readRDS('data/recount_meta_sampletype_urls.RDS')
+    ## rownames(tsne.meta) <- tsne.meta$run_id
+    ## tsne.meta <- tsne.meta[tsne.order,]
 
-    rownames(tcga.gtex.meta) <- tcga.gtex.meta$data_id
-    tcga.gtex.meta <- tcga.gtex.meta[tsne.order,]
+    ## tcga.gtex.meta <- readRDS('data/tcga_gtex_meta_edited_histologies.RDS')
 
-    tsne.meta <- cbind(tsne.meta,tcga.gtex.meta[,c('tissue_general','tissue_detail')])
+    ## rownames(tcga.gtex.meta) <- tcga.gtex.meta$data_id
+    ## tcga.gtex.meta <- tcga.gtex.meta[tsne.order,]
+
+    ## tsne.meta <- cbind(tsne.meta,tcga.gtex.meta[,c('tissue_general','tissue_detail')])
 
     gene.tpm.samps <- readRDS('data/mrmnorm_mat_rownames.RDS')
 
@@ -76,7 +78,7 @@ shinyServer(function(input,output,session){
 
     cellmarker.annotation.counts <- readRDS('data/cell_marker_annotations_marker_counts.RDS')
 
-    wgcna.dat <- readRDS('data/wgcna_app_table_pos_log_pc3sd_min100_ds2.RDS')
+    ## wgcna.dat <- readRDS('data/wgcna_app_table_pos_log_pc3sd_min100_ds2.RDS')
 
     user.selections <- reactiveValues(
         selection.list = list(),
@@ -1321,7 +1323,8 @@ shinyServer(function(input,output,session){
 
             plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
 
-            group.means <- aggregate(plot.dat[,'y'],list(plot.dat[,'x']),mean)
+            group.means <- aggregate(plot.dat[,'y'],list(plot.dat[,'x']),function(x) mean(exp(x)))
+            ## group.means <- aggregate(plot.dat[,'y'],list(plot.dat[,'x']),mean)
             
             ## print(log(sort(group.means$x,decreasing=T)[1:10]+1))
 
