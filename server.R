@@ -499,9 +499,12 @@ shinyServer(function(input,output,session){
         ## map.centers <- readRDS('data/recount_over50_bulkOnly_pc3sd_poscounts_colparams.RDS')
         ## gene.means <- readRDS('data/recount_over50_pc3sd_geoMeansNZ.RDS')
 
-        map.dat <- readRDS('data/recount_750_dim_noProj_over50_pc3sd_tpm_log.RDS')
-        rotation.dat <- readRDS('data/recount_all_big_irlba_750_over50_pc3sd_tpm_log_rotmat.RDS')
-        map.centers <- readRDS('data/recount_over50_pc3sd_colparams_tpm_log.RDS')
+        ## map.dat <- readRDS('data/recount_750_dim_noProj_over50_pc3sd_tpm_log.RDS')
+        ## rotation.dat <- readRDS('data/recount_all_big_irlba_750_over50_pc3sd_tpm_log_rotmat.RDS')
+        ## map.centers <- readRDS('data/recount_over50_pc3sd_colparams_tpm_log.RDS')
+        map.dat <- readRDS('data/recount_100_dim_noProj_over50_pc3sd_tpm_log_90th_var_genes.RDS')
+        rotation.dat <- readRDS('data/recount_all_big_irlba_100_over50_pc3sd_tpm_log_90th_var_genes_rotmat.RDS')
+        map.centers <- readRDS('data/recount_over50_pc3sd_colparams_tpm_log_90th_var_genes.RDS')
         gene.lens <- read.table('data/ensembl_gene_lengths.tsv',sep='\t',stringsAsFactors=F,row.names=1)
 
         map.centers <- subset(map.centers,vars>0)
@@ -1643,21 +1646,26 @@ shinyServer(function(input,output,session){
 
             ## bottom.ramp <- colorRampPalette(c('#D73027','#FFFFBF'))
             ## bottom.ramp <- colorRampPalette(c('#FF0000','#FFFFBF'))
-            bottom.ramp <- colorRampPalette(c('#FF0000','#ADD8E6'))
+            bottom.ramp <- colorRampPalette(c('#152238','#3792CB'))
+            top.ramp <- colorRampPalette(c('#3792CB','#FF0000'))
+
+            color.ramp <- c(bottom.ramp(50),top.ramp(50))
+            
+            ## bottom.ramp <- colorRampPalette(c('#FF0000','#ADD8E6'))
 
             ## top.ramp <- colorRampPalette(c('#FFFFBF','#4575B4'))
             ## top.ramp <- colorRampPalette(c('#FFFFBF','#FFFFF8'))
-            top.ramp <- colorRampPalette(c('#ADD8E6','#F6FBFC'))
+            ## top.ramp <- colorRampPalette(c('#ADD8E6','#F6FBFC'))
 
             ## min.point <- min(min(colVarPlot),0.1439294) ### using true minimum, is waaaaaay too low
-            min.point <- min(min(colVarPlot),13.51984) # 1st percentile
+            ## min.point <- min(min(colVarPlot),13.51984) # 1st percentile
             ## ## min.point <- min(min(colVarPlot),10.85842) # testing, may be too small
             ## ## max.point <- max(max(colVarPlot),25.65136)
-            max.point <- 25.65136
+            ## max.point <- 25.65136
             
             ## mean.point <- min(mean(colVarPlot),16.69396)
             ## mean.point <- 16.69396
-            mean.point <- mean(colVarPlot)
+            ## mean.point <- mean(colVarPlot)
 
             ## print(min.point)
             ## print(max.point)
@@ -1665,7 +1673,7 @@ shinyServer(function(input,output,session){
             ## min.point <- min(colVarPlot)
             ## max.point <- max(colVarPlot)
 
-            mid.point <- round((mean.point - min.point) / (max.point - min.point)*100)
+            ## mid.point <- round((mean.point - min.point) / (max.point - min.point)*100)
 
             ## print(mid.point)
 
