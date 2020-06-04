@@ -34,7 +34,8 @@ shinyServer(function(input,output,session){
 
     tsne.order <- rownames(tsne.data)
 
-    tsne.meta <- readRDS('data/recount2_meta_edited_hist_pc3sd_over50.RDS')
+    ## tsne.meta <- readRDS('data/recount2_meta_edited_hist_pc3sd_over50.RDS')
+    tsne.meta <- readRDS('data/recount2_meta_edited_hover_labels.RDS')
 
     ## tsne.meta <- readRDS('data/recount_meta_sampletype_urls.RDS')
     ## rownames(tsne.meta) <- tsne.meta$run_id
@@ -338,7 +339,9 @@ shinyServer(function(input,output,session){
         marker.tab <- getGeneTable()
 
         if(nrow(marker.tab) > 0){
-            marker.tab <- marker.tab[,c(10,8,9,3,4,5,6,7,11:ncol(marker.tab))]
+            ## marker.tab <- marker.tab[,c(10,8,9,3,4,5,6,7,11:ncol(marker.tab))]
+            marker.tab <- marker.tab[,c(10,8,9,3,11:ncol(marker.tab))]
+
         }
 
         ## print(head(marker.tab))
@@ -1552,9 +1555,41 @@ shinyServer(function(input,output,session){
         
     })
 
-    output$tsne <- renderPlotly({
+    ## observe({
 
-        input$colorButton
+    ##     a <- input$colorButton
+
+    ##     if(a > 0){
+
+    ##         print('foo')
+    ##         plotlyProxy('tsne',session) %>%
+    ##             plotlyProxyInvoke(
+    ##                 'restyle',
+    ##                 list('marker.color'=list(sample(c('red','blue'),34759,replace=T)),
+    ##                      'marker.showscale'=TRUE))
+
+            
+    ##                 ## list('marker.color'=list(runif(n=34759)),
+    ##                 ##      'marker.colorscale'='Viridis',
+    ##                 ##      'marker.showscale'=TRUE))
+
+            
+    ##     }
+        
+    ## })
+    
+        ## plotlyProxy('tsne',session) %>%
+        ##     plotlyProxyInvoke(
+        ##         'restyle',
+        ##         list('marker.color'='red'))})
+    
+    observe({
+
+        col.butt <- input$colorButton
+
+        if(col.butt == 0){
+            return()
+        }
 
         isolate({
             euclid.file <- input$euclid_input
@@ -1576,16 +1611,362 @@ shinyServer(function(input,output,session){
             ## input$colorfactors
             markerSize <- input$markerSize
             geneScale <- input$geneScale
-            layout.dat <- event_data('plotly_relayout',source='tsne')            
+            layout.dat <- event_data('plotly_relayout',source='tsne')
         })
 
+        color.ramp <- NULL
+
+        if(input$colorButton == 0 | colorFactors == 'No Coloring'){
+            colVarPlot <- NULL
+
+        } else if(colorFactors == 'Mesh'){
+            colVarPlot <- meshResults
+
+        } else if(colorFactors == 'Tissue'){
+            colVarPlot <- tissueResults
+            
+        } else if(colorFactors == 'DOID'){
+            colVarPlot <- doidResults
+
+        } else if(colorFactors == 'efo'){
+            colVarPlot <- efoResults
+
+        } else if(colorFactors == 'Gene'){
+            ## colVarPlot <- log2(geneVecResults+1)
+
+            if(geneScale == 'log2gene'){
+                ## ylabel <- 'log2(GENE)'
+                geneVecResults <- log2(geneVecResults)
+                geneVecResults <- log2(2^geneVecResults -1 )
+            } else if(geneScale == 'log2gene1'){
+                ## ylabel <- 'log2(GENE + 1)'
+                ## geneVecResults <- log2(geneVecResults + 1)
+                geneVecResults <- geneVecResults
+            }
+            else{
+                geneVecResults <- 2^geneVecResults - 1
+                ## ylabel <- 'GENE'
+            }
+
+            inf.gene.vals <- is.infinite(geneVecResults)
+            inf.gene.sum <- sum(inf.gene.vals)
+
+            if(inf.gene.sum > 0){
+                showNotification(sprintf('Removing %d points with -Inf gene value',inf.gene.sum),type='error',duration=10)
+            }
+            geneVecResults <- geneVecResults[!inf.gene.vals]
+            colVarPlot <- geneVecResults
+            ## colVarPlot <- colVarPlot[!is.infinite(colVarPlot)]
+            dataResults <- dataResults[names(colVarPlot),]
+
+            
+
+        } else if(colorFactors == 'KMeans'){
+            colVarPlot <- as.factor(kmeansVec[rownames(dataResults)])
+
+        } else if(colorFactors == 'Louvain'){
+            ## colVarPlot <- as.factor(louvainVec[rownames(dataResults)])
+            colVarPlot <- louvainVec[rownames(dataResults)]
+            colVarPlot[is.na(colVarPlot)] <- -1
+            colVarPlot <- as.factor(colVarPlot)
+
+        } else if(colorFactors == 'Projection'){
+            ## colVarPlot <- log2(projectionVec+1)
+            colVarPlot <- projectionVec
+            ## colVarPlot <- -1*projectionVec
+
+            ## bottom.ramp <- colorRampPalette(c('#D73027','#FFFFBF'))
+            ## bottom.ramp <- colorRampPalette(c('#FF0000','#FFFFBF'))
+            bottom.ramp <- colorRampPalette(c('#152238','#3792CB'))
+            top.ramp <- colorRampPalette(c('#3792CB','#FF0000'))
+
+            color.ramp <- c(bottom.ramp(50),top.ramp(50))
+            
+            ## bottom.ramp <- colorRampPalette(c('#FF0000','#ADD8E6'))
+
+            ## top.ramp <- colorRampPalette(c('#FFFFBF','#4575B4'))
+            ## top.ramp <- colorRampPalette(c('#FFFFBF','#FFFFF8'))
+            ## top.ramp <- colorRampPalette(c('#ADD8E6','#F6FBFC'))
+
+            ## min.point <- min(min(colVarPlot),0.1439294) ### using true minimum, is waaaaaay too low
+            ## min.point <- min(min(colVarPlot),13.51984) # 1st percentile
+            ## ## min.point <- min(min(colVarPlot),10.85842) # testing, may be too small
+            ## ## max.point <- max(max(colVarPlot),25.65136)
+            ## max.point <- 25.65136
+            
+            ## mean.point <- min(mean(colVarPlot),16.69396)
+            ## mean.point <- 16.69396
+            ## mean.point <- mean(colVarPlot)
+
+            ## print(min.point)
+            ## print(max.point)
+
+            ## min.point <- min(colVarPlot)
+            ## max.point <- max(colVarPlot)
+
+            ## mid.point <- round((mean.point - min.point) / (max.point - min.point)*100)
+
+            ## print(mid.point)
+
+            ## mid.point <- round((mean(colVarPlot) - min(colVarPlot)) / (max(colVarPlot) - min(colVarPlot)) * 100)
+
+            ## color.ramp <- c(bottom.ramp(mid.point),top.ramp(100-mid.point))
+
+            ## sample.min.point <- round((min(colVarPlot) - min.point) / (max.point - min.point)*100)
+
+            ## print(sample.min.point)
+
+            ## color.ramp <- color.ramp[sample.min.point:100]
+            
+        }
+        else{
+            colVarPlot <- colVarResults
+        }
+
+        ## dataResults$run.id <- rownames(dataResults)
+        ## dataResults <- cbind(dataResults,KMeans = as.character(kmeansVec[rownames(dataResults)]))
+        dataResults <- cbind(dataResults,Louvain = as.character(louvainVec[rownames(dataResults)]))
+
+        if(length(geneVecResults) > 0){
+            dataResults <- cbind(dataResults,Gene = as.character(geneVecResults))
+        } else{
+            dataResults <- cbind(dataResults,Gene=NA)
+        }
+
+        colVarAnnotation <- colVarPlot
+
+        if(typeof(colVarPlot) == 'character'){
+            colVarPlot <- gsub("(.{14,}?)\\s","\\1<br>",colVarPlot)
+        }
+
+        ## if(!is.null(colVarPlot)){
+
+        if(any(colVarPlot == 'NA') | any(colVarPlot == 'unlabelled')){
+
+            colVarPlot[colVarPlot == 'NA'] <- 'unlabelled'
+            colVarAnnotation[colVarAnnotation == 'NA'] <- 'unlabelled'
+
+            set.seed(11)
+            
+            color.ramp <- colorRampPalette(c("#8DD3C7","#FFFFB3","#BEBADA","#FB8072","#80B1D3","#FDB462","#B3DE69","#FCCDE5","#BC80BD","#CCEBC5","#FFED6F"))(length(unique(colVarPlot))) #,
+                                   ## colorRampPalette(brewer.pal(12,"Set3"))(length(unique(colVarPlot))),
+                                   ## sample(unique(colVarPlot)
+            ## color.ramp['unlabelled'] <- '#F0F0F0'
+            
+        }
+
+        if(!is.null(colVarPlot) & colorFactors != 'Gene' & colorFactors != 'Projection'){
+            
+            i <- 1
+
+            ## isolate({user.selections$tsne.traces <- list()})
+
+            tsne.traces <- list()
+
+            for(label in sort(unique(colVarPlot))){
+
+                inds <- which(colVarPlot == label)
+
+                tsne.traces[[i]] <- rownames(dataResults)[inds]
+                
+                color.ramp[i] <- if(label=='unlabelled') '#F0F0F0' else color.ramp[i]
+        
+                ## print(head(user.selections$tsne.traces[[i]]
+
+                i <- i+1
+            }
+
+
+            
+            ## plotlyProxy('tsne',session) %>%
+            ##     plotlyProxyInvoke(
+            ##         'restyle',
+            ##         'marker.color',runif(length(colVarPlot)))
+            
+
+
+
+            isolate({
+                n.traces <- length(user.selections$tsne.traces)
+
+                ## color.ramp <- colorRampPalette(c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", "#A6761D", "#666666"))(n.traces)
+
+                plotlyProxy('tsne',session) %>%
+                    plotlyProxyInvoke(
+                        'deleteTraces',
+                        seq(0,n.traces-1)) %>%
+                    plotlyProxyInvoke(
+                        'addTraces',
+                        lapply(tsne.traces,function(x) {
+                            
+                            name <- unname(colVarPlot[x[1]])
+                            
+                            list(x=dataResults[x,'y1'],
+                                y=dataResults[x,'y2'],
+                                mode='markers',
+                                type='scattergl',
+                                showlegend=(name!='unlabelled'),
+                                opacity=if(name!='unlabelled') 0.8 else 0.25,
+                                name=name,
+                                marker=list(size=markerSize),
+                                hoverinfo='text',
+                                hovertext=paste(dataResults[x,'hover.labels'],
+                                                '<br>Gene: ',dataResults[x,'Gene'],
+                                                '<br>Annotation: ',colVarAnnotation[x]))
+                        }))  %>%
+                    plotlyProxyInvoke(
+                        'relayout',
+                        list(showlegend=TRUE,
+                             colorway=color.ramp))
+                ## colorway='Set3'))
+                ##         colorway= c('#f3cec9', '#e7a4b6', '#cd7eaf', '#a262a9', '#6f4d96', '#3d3b72', '#182844')))
+                
+
+                            
+                
+                user.selections$tsne.traces <- tsne.traces
+            })
+
+        }
+        else{
+            isolate({
+
+                n.traces <- length(user.selections$tsne.traces)
+
+                tsne.traces <- list(rownames(dataResults))
+
+                if(n.traces > 1){
+
+                    plotlyProxy('tsne',session) %>%
+                        plotlyProxyInvoke(
+                            'deleteTraces',
+                            seq(0,n.traces-1)) %>%
+                        plotlyProxyInvoke(
+                            'addTraces',
+                            lapply(tsne.traces,function(x) {
+                                
+                                ## name <- unname(colVarPlot[x[1]])
+                                
+                                list(x=dataResults[x,'y1'],
+                                     y=dataResults[x,'y2'],
+                                     mode='markers',
+                                     type='scattergl',
+                                     showlegend=FALSE,
+                                     ## opacity=if(name!='unlabelled') 0.8 else 0.25,
+                                     ## name=name,
+                                     marker=list(size=markerSize,
+                                                 color=unname(colVarPlot),
+                                                 colorscale=color.ramp,
+                                                 cmin=min(colVarPlot),
+                                                 cmax=max(colVarPlot),
+                                                 showscale=TRUE),
+                                     hoverinfo='text',
+                                     hovertext=paste(dataResults[x,'hover.labels'],
+                                                     '<br>Gene: ',dataResults[x,'Gene'],
+                                                     '<br>Annotation: ',colVarAnnotation[x]))
+                            }))  ## %>%
+                        ## plotlyProxyInvoke(
+                        ##     'relayout',
+                        ##     list(showlegend=TRUE,
+                        ##          colorway=NULL))
+                }
+                else{
+                    
+                    plotlyProxy('tsne',session) %>%
+                        plotlyProxyInvoke(
+                            'restyle',
+                            list('marker.color'=list(unname(colVarPlot)),
+                                 'marker.colorscale'=color.ramp,
+                                 'marker.showscale'=TRUE))
+
+                }
+
+                user.selections$tsne.traces <- tsne.traces
+            })
+        }
+
+        if(is.null(layout.dat)){
+            
+            ax.x <- ax.y <- list(
+                title = "",
+                zeroline = FALSE,
+                showline = FALSE,
+                showticklabels = FALSE,
+                showgrid = FALSE,
+                range = c(-110,110)
+            )
+            
+        }
+        else{
+
+            ax.x <- list(
+                title = "",
+                zeroline = FALSE,
+                showline = FALSE,
+                showticklabels = FALSE,
+                showgrid = FALSE,
+                range=c(layout.dat[['xaxis.range[0]']],layout.dat[['xaxis.range[1]']]))
+
+            ax.y <- list(
+                title = "",
+                zeroline = FALSE,
+                showline = FALSE,
+                showticklabels = FALSE,
+                showgrid = FALSE,
+                range=c(layout.dat[['yaxis.range[0]']],layout.dat[['yaxis.range[1]']]))
+
+        }
+        
+        ## print(length(colVarPlot))
+
+
+        ## plotlyProxy('tsne',session) %>%
+        ##     plotlyProxyInvoke(
+        ##         'restyle',
+        ##         'marker.color',runif(length(colVarPlot)))
+
+        
+
+    })        
+
+    output$tsne <- renderPlotly({
+
+        ## input$colorButton
+
+        isolate({
+            euclid.file <- input$euclid_input
+            spear.file <- input$spearman_input
+            Euclid.pca.file <- input$euclid_pca_input
+            colVarResults <- colVar()
+            dataResults <- data()
+            geneVecResults <- geneVec()
+            meshResults <- meshVec()
+            tissueResults <- tissueVec()
+            doidResults <- doidVec()
+            efoResults <- efoVec()
+            colorFactors <- input$colorfactors
+            ## kmeansVec <- kmeansVec()
+            louvainVec <- louvainVec()
+            ## projectionVec <- user.selections$gene.input.results
+            projectionVec <- projectionVec()
+            ## input$tree
+            ## input$colorfactors
+            markerSize <- input$markerSize
+            geneScale <- input$geneScale
+            layout.dat <- event_data('plotly_relayout',source='tsne')
+            colorButton <- input$colorButton
+        })
+
+
+        
         ## print(colorFactors)
 
         ## color.ramp <- c('#800080','#FFFF00')
 
         color.ramp <- NULL
 
-        if(input$colorButton == 0 | colorFactors == 'No Coloring'){
+        ## if(input$colorButton == 0 | colorFactors == 'No Coloring'){
+        if(colorButton == 0 | colorFactors == 'No Coloring'){
             colVarPlot <- NULL
 
         } else if(colorFactors == 'Mesh'){
@@ -1787,32 +2168,51 @@ shinyServer(function(input,output,session){
         }
 
 
+        ## if(colorButton == 0 ){
+
         output.plot <- plot_ly(dataResults, x = ~y1, y = ~y2,mode="markers",type='scattergl',color = colVarPlot,
                                colors=color.ramp,
                                hoverinfo='text',
                                ## opacity=plot.opacity,
                                ## group = colVarPlot,
-                               text=~paste('ID: ',run_id,
-                                           '<br>Project: ',proj_id,
-                                           '<br>Tissue General: ',tissue_general,
-                                           '<br>Tissue Detail: ',tissue_detail,
-                                           '<br>Sample Type: ',sample_type,
-                                           '<br>Sample ID: ',samp_id,
-                                           ## '<br>Kmeans: ',KMeans,
-                                           '<br>Louvain: ',Louvain,
+                               ## text=~paste('ID: ',run_id,
+                               ##             '<br>Project: ',proj_id,
+                               ##             '<br>Tissue General: ',tissue_general,
+                               ##             '<br>Tissue Detail: ',tissue_detail,
+                               ##             '<br>Sample Type: ',sample_type,
+                               ##             '<br>Sample ID: ',samp_id,
+                               ##             ## '<br>Kmeans: ',KMeans,
+                               ##             '<br>Louvain: ',Louvain,
+                               ##             '<br>Gene: ',Gene,
+                               ##             '<br>Annotation: ',colVarAnnotation),
+                               text=~paste(hover.labels,
                                            '<br>Gene: ',Gene,
                                            '<br>Annotation: ',colVarAnnotation),
                                marker = list(size=markerSize),
                                source='tsne') %>%
-            ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
-            ## config(collaborate=FALSE) %>%
             layout(dragmode = "pan",
                    xaxis=ax.x,
                    yaxis=ax.y,
-                   legend=list(font=list(family='sans-serif',size=11))) ## %>%
+                   legend=list(font=list(family='sans-serif',size=11))) %>%
+            ## modebar=list(modeBarButtonsToRemove=c('zoomIn2d','lasso2d')))  %>%
+            ## plotly::config(modeBarButtonsToRemove=c('zoom2d'))
+            plotly::config(modeBarButtonsToRemove=c('hoverCompareCartesian','resetScale2d','hoverClosestCartesian','toggleSpikelines'))
+
+        ## config(modeBarButtonsToRemove = c("zoomIn2d", "zoomOut2d"))            
+
+            ## config(output.plot,modeBarButtonsToRemove = c('zoom2d'))
+
+
+            ## output.plot <- config(output.plot,modeBarButtonsToRemove = c('zoom2d'))
+
+            ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
+            ## config(collaborate=FALSE) %>%
+
+
+        print('bar')
 
         output.plot
-        
+        ## }
 
     })
   

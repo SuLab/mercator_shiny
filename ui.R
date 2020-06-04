@@ -151,7 +151,7 @@ fluidPage(
 
                                     ## actionButton('colorButton','Redraw Plot'),
                                     actionButton('colorButton',tags$h4('Redraw Plots')),
-                                    
+
                                     tags$hr(class='section-divider'),
 
                                     ## tags$br(),
@@ -283,4 +283,3 @@ fluidPage(
                            )
                   )
 )
-
