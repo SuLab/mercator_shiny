@@ -41,13 +41,33 @@ fluidPage(
                                       )
                         ),
                tabPanel('Violin',value='violinPanel',
-                        absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=70,left=25,right='auto',bottom='auto',width='97%',height='90%',value='violinPanel',
-                                      plotOutput('violin',width='100%',height='100%')
+                                      absolutePanel(id='results',fixed=FALSE,draggable=FALSE,top=70,left=25,right='auto',bottom='auto',width='97%',height='75%',value='violinPanel',
+                                                    plotlyOutput('violin',width='100%',height='100%'),
+
+                                                    fluidRow(
+                                                        column(8,offset=4,
+                                                               selectizeInput('violinGroup',
+                                                                              label=NULL,
+                                                                              choices=NULL,
+                                                                              multiple=TRUE,
+                                                                              width='100%',
+                                                                              options=list(
+                                                                                  dropdownDirection='up')
+                                                                              )
+                                                               ))
                                       )
+                        
+                        ## absolutePanel(id='violinSelect',fixed=TRUE,draggable=FALSE,top=400,left=25,width='90%',bottom='auto',
+                        ##               selectizeInput('violinGroup',
+                        ##                              label=NULL,
+                        ##                              choices=NULL,
+                        ##                              multiple=TRUE,
+                        ##                              width='100%'))
+
                         ),
                tabPanel('Bar Plot',value='barPanel',
                         absolutePanel(id='results',fixed=TRUE,draggable=FALSE,top=75,left=15,right='auto',bottom='auto',width='99%',height='85%',value='barPanel',
-                                      plotOutput('metadataBar',width='100%',height='100%')
+                                      plotlyOutput('metadataBar',width='100%',height='100%')
                                       )
                         ),
 
@@ -151,6 +171,7 @@ fluidPage(
 
                                     ## actionButton('colorButton','Redraw Plot'),
                                     actionButton('colorButton',tags$h4('Redraw Plots')),
+
 
                                     tags$hr(class='section-divider'),
 

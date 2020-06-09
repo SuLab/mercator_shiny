@@ -81,13 +81,20 @@ shinyServer(function(input,output,session){
 
     ## wgcna.dat <- readRDS('data/wgcna_app_table_pos_log_pc3sd_min100_ds2.RDS')
 
+    ## onevent('item_remove','hooHa-selectized',print('bar'))
+
     user.selections <- reactiveValues(
         selection.list = list(),
         selection.datalist = data.frame(),
         gene.input.results = list(),
         gene.input.datalist = data.frame(),
         tsne.traces = list(tsne.order),
-        previous.tab = 't-SNE'
+        previous.tab = 't-SNE',
+        violinX.change = TRUE,
+        colorButtonActive = FALSE,
+        currentViolinGroups = c(),
+        violinGroupRendered = FALSE,
+        firstViolinRender = FALSE
     )
 
     updateSelectizeInput(session,
@@ -98,6 +105,22 @@ shinyServer(function(input,output,session){
                                       closeAfterSelect=TRUE
                                       )
                          )
+
+
+    onevent('change','violinXFactors',function(event){
+        
+        isolate({user.selections$violinX.change <- TRUE})
+
+    })
+    ## updateSelectizeInput(session,
+    ##                      'hooHa',
+    ##                      choices=c(1,2,3,4,5),
+    ##                      selected=c(1,2),
+    ##                      server=TRUE,
+    ##                      options=list(maxOptions=10,
+    ##                                   closeAfterSelect=FALSE)
+    ##                      )
+
 
     projection.getDatalist <- reactive({
 
@@ -453,6 +476,8 @@ shinyServer(function(input,output,session){
 
     observeEvent(input$topNavBar, {
 
+        if(input$topNavBar == 'violinPanel'){user.selections$violinGroupRendered <- TRUE}
+
         if(input$topNavBar == 'genePanel' | input$topNavBar == 'samplePanel' | input$topNavBar == 'wgcnaPanel'){
             
             runjs(" var $this = $('#controlPanelClickable');
@@ -722,20 +747,27 @@ shinyServer(function(input,output,session){
 
     selectionVec <- reactive({
 
-        rows <- input$selectionList_rows_selected
+        ## rows <- input$selectionList_rows_selected
 
-        if(is.null(rows)){
+        ## if(is.null(rows)){
+        ##     return(NULL)
+        ## }
+
+        if(length(user.selections$selection.list) == 0){
+
             return(NULL)
+
         }
 
-        indVec <- c()
-        groupVec <- c()
+        ## indVec <- c()
+        ## groupVec <- c()
 
-        dataResults <- data()
+        ## dataResults <- data()
 
         results <- data.frame()
 
-        for(rowNum in rows){
+        ## for(rowNum in rows){
+        for(rowNum in 1:length(user.selections$selection.list)){
 
             entry <- user.selections$selection.list[[rowNum]]
 
@@ -743,9 +775,7 @@ shinyServer(function(input,output,session){
 
             results <- rbind(results,data.frame(samps=entry,group=rep(rowLabel,length(entry)),stringsAsFactors=F))
 
-
         }
-
 
         return(results)
 
@@ -930,7 +960,7 @@ shinyServer(function(input,output,session){
             rownames(marker.tab) <- marker.tab[,1]
             colnames(marker.tab) <- c('ens_id','unique','p-val','unique-fcs','total-fcs','stat')
 
-            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4,5,6)],stringsAsFactors=F)            
+            marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4,5,6)],stringsAsFactors=F)
 
             marker.tab <- marker.tab[,c(-3)]
             colnames(marker.tab) <- c('Symbol','ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Gene Symbol','Entrez ID','Ensembl ID','unique','p-val','unique-fcs','total-fcs','stat')
@@ -1093,7 +1123,8 @@ shinyServer(function(input,output,session){
     efo.tree.dat <- readRDS('data/efo_tree_flat_pc3sd.RDS')
     output$efoTree <- renderTree(efo.tree.dat)
 
-    output$metadataBar <- renderPlot({
+    ## output$metadataBar <- renderPlot({
+    output$metadataBar <- renderPlotly({
         
         input$colorButton
 
@@ -1199,28 +1230,34 @@ shinyServer(function(input,output,session){
 
         ## print(head(plot.dat))
 
-        output.plot <- ggplot() +
-            geom_bar(data=plot.dat,aes(x=Label,y=number,fill=Label),stat='identity') +
-            theme(panel.background= element_blank(),
-                  axis.text.x = element_text(size=14,angle=45,vjust=0.5),
-                  axis.text.y = element_text(size=18),
-                  legend.text = element_text(size=24),
-                  axis.title.x = element_blank(),
-                  axis.title.y = element_text(size=20),
-                  legend.title = element_blank(),
-                  legend.position='none',
-                  plot.title=element_text(hjust=0.9,size=22)
-                  ) +
-            scale_x_discrete(labels=x.labels,limits=names(x.labels)) +
-            ylab('') +
-            ggtitle(plot.title)
+        ## output.plot <- ggplot() +
+        ##     geom_bar(data=plot.dat,aes(x=Label,y=number,fill=Label),stat='identity') +
+        ##     theme(panel.background= element_blank(),
+        ##           axis.text.x = element_text(size=14,angle=45,vjust=0.5),
+        ##           axis.text.y = element_text(size=18),
+        ##           legend.text = element_text(size=24),
+        ##           axis.title.x = element_blank(),
+        ##           axis.title.y = element_text(size=20),
+        ##           legend.title = element_blank(),
+        ##           legend.position='none',
+        ##           plot.title=element_text(hjust=0.9,size=22)
+        ##           ) +
+        ##     scale_x_discrete(labels=x.labels,limits=names(x.labels)) +
+        ##     ylab('') +
+        ##     ggtitle(plot.title)
 
+        output.plot <- plot_ly(data=plot.dat,
+                               x=~Label,
+                               y=~number,
+                               color=~Label) %>%
+            plotly::config(modeBarButtonsToRemove=c('hoverCompareCartesian','resetScale2d','hoverClosestCartesian','toggleSpikelines','zoomIn2d','zoomOut2d','autoScale2d','pan2d','zoom2d'))
         output.plot
 
     })
         
 
-    output$violin <- renderPlot({
+    violinData <- reactive({
+
         input$colorButton
 
         isolate({
@@ -1247,9 +1284,6 @@ shinyServer(function(input,output,session){
             geneScale <- input$geneScale
         })
 
-        ## plot.dat <- cbind(dataResults,colVarResults)
-        ## colnames(plot.dat) <- c('y1','y2','color')
-
         if(input$colorButton == 0 | colorFactors == 'No Coloring'){
             xGroup <- 'All'
         } else if(colorFactors == 'Mesh'){
@@ -1270,236 +1304,520 @@ shinyServer(function(input,output,session){
         } else{
             xGroup <- colVarResults
         }
-        ## if(is.null(xGroup)){
-        ##     yGroup <- NULL
-        ## }
-        ## else{
 
         if(yFactors == 'projection'){
+
             yGroup <- -1 * projectionVec
 
-            ## if(yTransform == 'log2gene'){
-            ##     ylabel <- 'log2(Projection)'
-            ## } else if(yTransform == 'log2gene1'){
-            ##     ylabel <- 'log2(Projection + 1)'
-            ## } else{
             ylabel <- 'Projection'
-            ## }
-            
-            ## ylabel='Projection'
-            ## print(sampleInputSelected)
-            ## print(projection.list[
-            plot.title=paste('Projection of ',projection.list[sampleInputSelected,'name'],sep='')
+
+            ## plot.title=paste('Projection of ',projection.list[sampleInputSelected,'name'],sep='')
+
         } else{
-            ## yGroup <- log10(geneVecResults+1)
+
             yGroup <- geneVecResults
             gene.label <- names(gene.choices)[gene.num.vec[gene.id]]
 
-            ## if(geneScale == 'log2gene'){
-            ##     ylabel <- 'log2(GENE)'
-            ##     ## plot.dat$y <- log2(plot.dat$y)
-            ## } else if(geneScale == 'log2gene1'){
-            ##     ylabel <- 'log2(GENE + 1)'
-            ##     ## plot.dat$y <- log2(plot.dat$y+1)
-            ## } else{
-            ##     ylabel <- 'GENE'
-            ## }
-            
-            ## ylabel='log2( GENE + 1 )'
-            ## ylabel <- paste('log10( TPM + 1) of ',gene.label,sep='')
-            plot.title=paste('Expression of ',gene.label,sep='')
+            ## plot.title=paste('Expression of ',gene.label,sep='')
         }
 
-        
-        
         if(any(xGroup == 'All')){
             ## used.names <- names(yGroup)
-            plot.dat <- data.frame(x=as.factor(xGroup),y=yGroup)
+            ## plot.dat <- data.frame(x=as.factor(xGroup),y=yGroup)
+            plot.dat <- data.frame(x=xGroup,y=yGroup,stringsAsFactors=F)
             sizeVec <- rep(3,nrow(plot.dat))
             top.groups <- NULL
-        } else if(colorFactors == 'Louvain'){
+        } else{
 
-            ## if(xGroup=='All'){
-            ##     used.names <- names(yGroup)
-            ## } else{
             used.names <- intersect(names(xGroup),names(yGroup))
-            ## }
-
-            ## print(top.clus.per.genes[[gene.id]])
 
             plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
 
-            group.means <- aggregate(plot.dat[,'y'],list(plot.dat[,'x']),function(x) mean(exp(x)))
-            ## group.means <- aggregate(plot.dat[,'y'],list(plot.dat[,'x']),mean)
+        } 
+        
+        return(plot.dat)
+
+    })
+
+    onevent('change','violinGroup',function(event){
+
+        ## if(!(user.selections$violinGroupRendered)){
+        ##     ## print('escaped violin change')
+        ##     return()
+        ## }
+
+        if(user.selections$firstViolinRender){
+            print('escape first render')
+            user.selections$firstViolinRender <- FALSE
+            user.selections$colorButtonActive <- FALSE
+            return()
+        }
+
+        ## print('fire violin change')
+        ## print(input$violinGroup)
+        ## print(user.selections$currentViolinGroups)
+
+        ## print(all(input$violinGroup == user.selections$currentViolinGroups))
+
+        ## print(user.selections$colorButtonActive)
+
+        col.butt <- input$colorButton
+
+        if(col.butt == 0){
+            return()
+        }
+
+        ## isolate({
+        violinGroups <- input$violinGroup
+        violinData <- violinData()
+        ## })
+
+        selectionRes <- selectionVec()
+
+        if(user.selections$colorButtonActive){
+
+            n.traces <- length(user.selections$currentViolinGroups)
+
+            ## print(user.selections$currentViolinGroups)
+            ## print(violinGroups)
+            ## print(n.traces)
+
+            color.ramp <- colorRampPalette(c("#8DD3C7","#FFFFB3","#BEBADA","#FB8072","#80B1D3","#FDB462","#B3DE69","#FCCDE5","#BC80BD","#CCEBC5","#FFED6F"))(length(violinGroups))
+
+            ## i <- 0
             
-            ## print(log(sort(group.means$x,decreasing=T)[1:10]+1))
+            set.seed(1)
 
-            group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
-            ## print(group.means[1:10])
+            new.order <- violinGroups
 
-            ## print(top.clus.per.genes[[gene.id]])
+            ## print(head(subset(selectionRes,group=='Selection: foo')))
+
+            plotlyProxy('violin',session) %>%
+                plotlyProxyInvoke(
+                    'deleteTraces',
+                    seq(0,n.traces-1)) %>%
+                plotlyProxyInvoke(
+                    'addTraces',
+                    lapply(violinGroups,function(group.name) {
+                        label <- gsub("(.{14,}?)\\s","\\1\n",group.name)
+                        
+                        ## i <<- i + 1
+
+                        if(grepl('Selection',group.name)){
+
+                            selectionSlice <- subset(selectionRes,group==group.name)
+
+                            list(
+                                frame=NULL,
+                                x=rep(label,nrow(selectionRes)),
+                                y=violinData[selectionSlice$samps,'y'],
+                                xaxis='x',
+                                yaxis='y',
+                                type='violin',
+                                showlegend=TRUE,
+                                name=label)
+
+                        } else if(group.name == 'Unlabelled'){
+
+                            other.data <- subset(violinData,!(x %in% violinGroups))
+
+                            list(
+                                frame=NULL,
+                                x=rep('Unlabelled',nrow(other.data)),
+                                y=other.data[,'y'],
+                                xaxis='x',
+                                yaxis='y',
+                                type='violin',
+                                showlegend=TRUE,
+                                name='Unlabelled')
+
+                        } else{
+
+                            dat.slice <- subset(violinData,x==group.name)
+
+                            list(
+                                ## fillcolor=color.ramp[i],
+                                frame=NULL,
+                                ## line=list(color=color.ramp[i]),
+                                ## marker=list(color=color.ramp[i],
+                                ##             line=list(
+                                ##                 color=color.ramp[i])
+                                ##             ),
+                                x=rep(label,nrow(dat.slice)),
+                                y=dat.slice[,'y'],
+                                xaxis='x',
+                                yaxis='y',
+                                type='violin',
+                                showlegend=TRUE,
+                                name=label)
+
+                        }
+                    })) %>%
+    ## plotlyProxyInvoke(
+    ##     'addTraces',{
+    ##         other.data <- subset(violinData,!(x %in% violinGroups))
+    ##     list(
+    ##         frame=NULL,
+    ##         x=rep('Unlabelled',nrow(other.data)),
+    ##         y=other.data[,'y'],
+    ##         xaxis='x',
+    ##         yaxis='y',
+    ##         type='violin',
+    ##         showlegend=TRUE,
+    ##         name='Unlabelled')
+    ##     }) %>%
+    plotlyProxyInvoke(
+        'relayout',
+        list(showlegend=TRUE,
+             'xaxis.autorange'=TRUE,
+             
+             ## 'xaxis.catqegoryarray'=violinGroups,
+             ## 'xaxis.range'=c(0.5,length(violinGroups)+0.5),
+             colorway=color.ramp)
+        
+    )
             
-            if(!is.null(selectionRes)){
+        } else{
+            
+            n.traces <- length(user.selections$currentViolinGroups)
 
-                selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
+            new.order <- user.selections$currentViolinGroups
 
-                num.selections <- length(unique(selectionRes$group))
+            ### ADD ###
+            if(n.traces < length(violinGroups)){
+                
+                new.group <- setdiff(violinGroups,user.selections$currentViolinGroups)
+                
+                print('add')
+                print(new.group)
 
-                ## plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+                if(new.group == 'Unlabelled'){
 
-            } else{
-                selectionRes <- data.frame()
-                num.selections <- 0
+                    new.order <- c(new.order,'Unlabelled')
+
+                    other.data <- subset(violinData,!(x %in% violinGroups))
+
+                    plotlyProxy('violin',session) %>%
+                        plotlyProxyInvoke(
+                            'addTraces',{
+                                list(
+                                    frame=NULL,
+                                    x=rep('Unlabelled',nrow(other.data)),
+                                    y=other.data[,'y'],
+                                    xaxis='x',
+                                    yaxis='y',
+                                    type='violin',
+                                    showlegend=TRUE,
+                                    name='Unlabelled')
+                            })
+                    
+                } else if('Unlabelled' %in% user.selections$currentViolinGroups){
+
+                    other.data <- subset(violinData,!(x %in% violinGroups))
+
+                    if(grepl('Selection',new.group)){
+                        data.slice <- violinData[subset(selectionRes,group==new.group)$samps,]
+                        data.slice$x <- new.group
+
+                    } else{
+                        data.slice <- subset(violinData,x == new.group)
+                    }
+
+                    new.order <- new.order[-length(new.order)]
+                    new.order <- c(new.order,new.group,'Unlabelled')
+                    
+                    plotlyProxy('violin',session) %>%
+                        plotlyProxyInvoke('deleteTraces',c(n.traces-1)) %>%
+                        plotlyProxyInvoke(
+                            'addTraces',{
+                                list(frame=NULL,
+                                     x=rep(new.group,nrow(data.slice)),
+                                     y=data.slice[,'y'],
+                                     xaxis='x',
+                                     yaxis='y',
+                                     type='violin',
+                                     showlegend=TRUE,
+                                     name=new.group)
+                            }) %>%
+                            plotlyProxyInvoke(
+                                'addTraces',{
+                                list(frame=NULL,
+                                     x=rep('Unlabelled',nrow(other.data)),
+                                     y=other.data[,'y'],
+                                    xaxis='x',
+                                    yaxis='y',
+                                    type='violin',
+                                    showlegend=TRUE,
+                                    name='Unlabelled')
+                                })
+                } else{
+
+                    if(grepl('Selection',new.group)){
+                        data.slice <- violinData[subset(selectionRes,group==new.group)$samps,]
+                        data.slice$x <- new.group
+
+                    } else{
+                        data.slice <- subset(violinData,x == new.group)
+                    }
+
+                    new.order <- c(new.order,new.group)
+
+                    plotlyProxy('violin',session) %>%                    
+                        plotlyProxyInvoke(
+                            'addTraces',{
+                                list(frame=NULL,
+                                     x=rep(new.group,nrow(data.slice)),
+                                     y=data.slice[,'y'],
+                                     xaxis='x',
+                                     yaxis='y',
+                                     type='violin',
+                                     showlegend=TRUE,
+                                     name=new.group)
+                            })
+                }
+
+            } else{ ############# REMOVE
+
+                new.group <- setdiff(user.selections$currentViolinGroups,violinGroups)
+
+                print('remove')
+                print(new.group)
+
+                if(new.group == 'Unlabelled'){
+
+                    new.order <- new.order[-n.traces]
+
+                    plotlyProxy('violin',session) %>%
+                        plotlyProxyInvoke('deleteTraces',n.traces-1)
+                            
+                } else if('Unlabelled' %in% user.selections$currentViolinGroups){
+
+                    other.data <- subset(violinData,!(x %in% violinGroups))
+                    remove.ind <- which(user.selections$currentViolinGroups == new.group)-1
+                    ## data.slice <- subset(violinData,x == new.group)
+                    
+                    new.order <- new.order[-(remove.ind+1)]
+
+                    plotlyProxy('violin',session) %>%
+                        plotlyProxyInvoke('deleteTraces',c(remove.ind,(n.traces-1))) %>%
+                        plotlyProxyInvoke(
+                            'addTraces',{
+                                list(frame=NULL,
+                                     x=rep('Unlabelled',nrow(other.data)),
+                                     y=other.data[,'y'],
+                                     xaxis='x',
+                                     yaxis='y',
+                                     type='violin',
+                                     showlegend=TRUE,
+                                     name='Unlabelled')
+                           })
+
+                } else{
+
+                    remove.ind <- which(user.selections$currentViolinGroups == new.group)-1
+                    
+                    new.order <- new.order[-(remove.ind+1)]
+
+                    plotlyProxy('violin',session) %>%
+                        plotlyProxyInvoke('deleteTraces',remove.ind) ## %>%
+                        ## plotlyProxyInvoke(
+                        ##     'relayout',
+                        ##     list(showlegend=TRUE,
+                        ##          'xaxis.categoryarray'=violinGroups,
+                        ##          'xaxis.range'=c(-0.5,length(violinGroups)-0.5),
+                        ##          colorway=color.ramp)
+        
+            ## )
+                    
+                }
+
             }
 
+        }
+
+        print(new.order)
+
+        ## user.selections$currentViolinGroups <- violinGroups        
+        user.selections$currentViolinGroups <- new.order
+        
+        user.selections$colorButtonActive <- FALSE
+
+    })
+
+    
+
+    ## output$violin <- renderPlot({
+    output$violin <- renderPlotly({
+        ## input$colorButton
+
+        isolate({
+
+            col.butt <- input$colorButton
+            violinData <- violinData()
+            violinXGroup <- input$violinXFactors            
+
+            selectionRes <- selectionVec()
+            selectionRows <- input$selectionList_rows_selected
+            selectionNames <- sapply(selectionRows,function(x) paste('Selection:',as.character(user.selections$selection.datalist[x,'name'])))
+
+            user.selections$firstViolinRender <- TRUE
+
+        })
+
+        violinData <- subset(violinData, x != 'NA')
+
+        if(any(violinData$x == 'All')){
+            top.groups <- 'All'
+
+            plot.dat <- violinData
+            
+        } else if(violinXGroup == 'Louvain'){
+            group.means <- aggregate(violinData[,'y'],list(violinData[,'x']),function(x) mean(exp(x)))            
+            group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
+            num.selections <- length(selectionNames)
+
+            if(length(selectionNames) > 0){
+                num.selections <- length(selectionNames)
+            } else{
+                ## selectionRes <- data.frame()
+                num.selections <- 0
+            }
 
             top.groups <- group.means[1:(10-num.selections)]
-            ## top.groups <- top.clus.per.genes[[gene.id]][1:(length(top.clus.per.genes[[gene.id]])-num.selections)]-1
 
-            ## plot.dat[which(! (plot.dat$x %in% as.character(top.clus.per.genes[[gene.id]][1:(length(top.clus.per.genes[[gene.id]])-num.selections)-1,'x'] <- 'Other'
-            plot.dat[which(! (plot.dat$x %in% as.character(top.groups))),'x'] <- 'Other'
+            top.groups <- c(top.groups,selectionNames,'Unlabelled')
 
-            plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[selectionRes$samps]))
+            plot.dat <- violinData
+            plot.dat[!(plot.dat$x %in% top.groups),'x'] <- 'Unlabelled'
 
-            sizeVec <- rep(3,nrow(plot.dat))
-            sizeVec[which(plot.dat$x != 'Other')] <- 5
+        } else if(violinXGroup =='tissue_general'){
 
-            top.groups <- c(top.groups,unique(selectionRes$group),'Other')
+            top.groups <- unique(violinData$x)
+            plot.dat <- violinData
+            plot.dat[!(plot.dat$x %in% top.groups),'x'] <- 'Unlabelled'
 
-        } else if(colorFactors=='tissue_general'){
+        } else if(violinXGroup == 'tissue_detail'){
 
-            used.names <- intersect(names(xGroup),names(yGroup))
-
-            plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
-
-            plot.dat <- subset(plot.dat,x != 'NA')
-
-            if(!is.null(selectionRes)){
-                selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
-            }
-
-            plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
-
-            sizeVec <- rep(3,nrow(plot.dat))
-
-            top.groups <- NULL
-
-        } else if(colorFactors == 'tissue_detail'){
-            
-            used.names <- intersect(names(xGroup),names(yGroup))
-            plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
-
-            plot.dat <- subset(plot.dat,x != 'NA')
-
-            if(!is.null(selectionRes)){
-
-                selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
-
-                num.selections <- length(unique(selectionRes$group))
-
-                ## plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
-
+            if(length(selectionNames) > 0){
+                num.selections <- length(selectionNames)
             } else{
-
-                selectionRes <- data.frame()
                 num.selections <- 0
             }
 
-            sizeVec <- rep(3,nrow(plot.dat))
-
-            group.means <- aggregate(plot.dat[,'y'],list(plot.dat[,'x']),mean)
+            group.means <- aggregate(violinData[,'y'],list(violinData[,'x']),function(x) mean(exp(x)))
             group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
             group.means <- group.means[! group.means %in% c('Skin','Soft Tissue','Thymus')]
 
             top.groups <- group.means[1:(13 - num.selections)]
 
-            plot.dat[which(! (plot.dat$x %in% as.character(top.groups))),'x'] <- 'Other'
+            plot.dat <- violinData
+            plot.dat[!(plot.dat$x %in% top.groups),'x'] <- 'Unlabelled'
 
-            plot.dat <- rbind(plot.dat,data.frame(x=as.character(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+            top.groups <- c(top.groups,selectionNames,'Unlabelled')
 
-            top.groups <- c(top.groups,unique(selectionRes$group),'Other')
-            
-            sizeVec[which(plot.dat$x != 'Other')] <- 5
-            
+        } else{
 
-        }
-        ## else if(any(xGroup != 'All')){
-        else{
-            used.names <- intersect(names(xGroup),names(yGroup))
-            plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
-
-            labelled.dat <- subset(plot.dat,x != 'unlabelled')
+            labelled.dat <- subset(violinData,x != 'unlabelled')
 
             group.cnts <- table(labelled.dat[,'x'])
             used.groups <- names(which(group.cnts>(nrow(labelled.dat) / 100)))
             labelled.dat <- subset(labelled.dat,x %in% used.groups)
 
-
-            if(!is.null(selectionRes)){
-
-                selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
-
-                num.selections <- length(unique(selectionRes$group))
-
-                ## plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
-
+            if(length(selectionNames) > 0){
+                num.selections <- length(selectionNames)
             } else{
-
-                selectionRes <- data.frame()
                 num.selections <- 0
             }
 
-            sizeVec <- rep(3,nrow(plot.dat))
-
-            top.groups <- NULL
-
-            if((length(unique(xGroup)) + num.selections) > 10){
+            if((length(unique(violinData$x)) + num.selections > 10)){
 
                 group.means <- aggregate(labelled.dat[,'y'],list(labelled.dat[,'x']),mean)
                 group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
 
-                ## group.means <- group.means[group.means %in% used.groups]
-
                 top.groups <- group.means[1:(10 - num.selections)]
 
-                plot.dat[which(! (plot.dat$x %in% as.character(top.groups))),'x'] <- 'Other'
+                plot.dat <- violinData
+                plot.dat[!(plot.dat$x %in% top.groups),'x'] <- 'Unlabelled'
 
-                sizeVec[which(plot.dat$x != 'Other')] <- 5
-                
-                top.groups <- c(top.groups,unique(selectionRes$group),'Other')
-
+                top.groups <- c(top.groups,selectionNames,'Unlabelled')
             }
+        }
+        
+        ##     used.names <- intersect(names(xGroup),names(yGroup))
+        ##     plot.dat <- data.frame(x=as.character(xGroup[used.names]),y=yGroup[used.names],stringsAsFactors=F)
+
+        ##     labelled.dat <- subset(plot.dat,x != 'unlabelled')
+
+        ##     group.cnts <- table(labelled.dat[,'x'])
+        ##     used.groups <- names(which(group.cnts>(nrow(labelled.dat) / 100)))
+        ##     labelled.dat <- subset(labelled.dat,x %in% used.groups)
+
+
+        ##     if(!is.null(selectionRes)){
+
+        ##         selectionRes <- selectionRes[selectionRes$samps %in% used.names,]
+
+        ##         num.selections <- length(unique(selectionRes$group))
+
+        ##         ## plot.dat <- rbind(plot.dat,data.frame(x=as.factor(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+
+        ##     } else{
+
+        ##         selectionRes <- data.frame()
+        ##         num.selections <- 0
+        ##     }
+
+        ##     sizeVec <- rep(3,nrow(plot.dat))
+
+        ##     top.groups <- NULL
+
+        ##     if((length(unique(xGroup)) + num.selections) > 10){
+
+        ##         group.means <- aggregate(labelled.dat[,'y'],list(labelled.dat[,'x']),mean)
+        ##         group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
+
+        ##         ## group.means <- group.means[group.means %in% used.groups]
+
+        ##         top.groups <- group.means[1:(10 - num.selections)]
+
+        ##         plot.dat[which(! (plot.dat$x %in% as.character(top.groups))),'x'] <- 'Other'
+
+        ##         sizeVec[which(plot.dat$x != 'Other')] <- 5
+                
+        ##         top.groups <- c(top.groups,unique(selectionRes$group),'Other')
+
+        ##     }
 
             
 
-            plot.dat <- rbind(plot.dat,data.frame(x=as.character(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
+        ##     plot.dat <- rbind(plot.dat,data.frame(x=as.character(selectionRes$group),y=yGroup[as.character(selectionRes$samps)]))
             
-            sizeVec[which(plot.dat$x != 'Other' & plot.dat$x != 'unlabelled')] <- 5
+        ##     sizeVec[which(plot.dat$x != 'Other' & plot.dat$x != 'unlabelled')] <- 5
 
-        } 
-
-
+        ## } 
 
 
-        x.labels <- gsub("(.{14,}?)\\s","\\1\n",unique(plot.dat$x))
-        names(x.labels) <- unique(plot.dat$x)
 
-        if('Other' %in% x.labels){
-            x.labels <- x.labels[x.labels != 'Other']
-            x.labels <- c(x.labels,'Other'='Other')
-        } else if('unlabelled' %in% x.labels){
-            x.labels <- x.labels[x.labels != 'unlabelled']
-            x.labels <- c(x.labels,'unlabelled'='Unlabelled')
-        } else if('Eye' %in% x.labels){
-            x.labels <- x.labels[x.labels != 'Eye']
-            x.labels <- c(x.labels,'Eye'='Eye')
-        }
 
-        if(!is.null(top.groups)){
+        ## x.labels <- gsub("(.{14,}?)\\s","\\1\n",unique(plot.dat$x))
+        ## names(x.labels) <- unique(plot.dat$x)
 
-            x.labels <- x.labels[top.groups]
+        ## if('Other' %in% x.labels){
+        ##     x.labels <- x.labels[x.labels != 'Other']
+        ##     x.labels <- c(x.labels,'Other'='Other')
+        ## } else if('unlabelled' %in% x.labels){
+        ##     x.labels <- x.labels[x.labels != 'unlabelled']
+        ##     x.labels <- c(x.labels,'unlabelled'='Unlabelled')
+        ## } else if('Eye' %in% x.labels){
+        ##     x.labels <- x.labels[x.labels != 'Eye']
+        ##     x.labels <- c(x.labels,'Eye'='Eye')
+        ## }
 
-        }
+        ## if(!is.null(top.groups)){
+
+        ##     x.labels <- x.labels[top.groups]
+
+        ## }
         
         ## min.y <- min(subset(plot.dat,y>0)$y)
 
@@ -1511,48 +1829,111 @@ shinyServer(function(input,output,session){
         ##     ylabel <- sprintf('log2(%s + 1)',ylabel)
         ## }
 
-        if(yFactors == 'gene'){
-            if(geneScale == 'log2gene'){
-                ylabel <- 'log2(GENE)'
-                ## plot.dat$y <- log2(plot.dat$y)
-                plot.dat$y <- log2(2^(plot.dat$y)-1)
-            } else if(geneScale == 'log2gene1'){
-                ylabel <- 'log2(GENE + 1)'
-                ## plot.dat$y <- log2(plot.dat$y+1)
-                ## plot.dat$y <- plot.dat$y
-            } else{
-                ylabel <- 'GENE'
-                plot.day$y <- 2^(plot.dat$y) - 1
-            }
-        }
+        ## if(yFactors == 'gene'){
+        ##     if(geneScale == 'log2gene'){
+        ##         ylabel <- 'log2(GENE)'
+        ##         ## plot.dat$y <- log2(plot.dat$y)
+        ##         plot.dat$y <- log2(2^(plot.dat$y)-1)
+        ##     } else if(geneScale == 'log2gene1'){
+        ##         ylabel <- 'log2(GENE + 1)'
+        ##         ## plot.dat$y <- log2(plot.dat$y+1)
+        ##         ## plot.dat$y <- plot.dat$y
+        ##     } else{
+        ##         ylabel <- 'GENE'
+        ##         plot.day$y <- 2^(plot.dat$y) - 1
+        ##     }
+        ## }
 
-
-
-        output.plot <- ggplot() +
-            ## geom_violin(data=plot.dat,aes(x=x,y=log2(abs(y)+0),fill=x),scale='width') +
-            ## geom_jitter(data=plot.dat,aes(x=x,y=log2(abs(y)+0)),width=0.1,alpha=0.1,colour='gray',size=sizeVec) +
-            geom_violin(data=plot.dat,aes(x=x,y=y+0,fill=x),scale='width')+
-            geom_jitter(data=plot.dat,aes(x=x,y=y+0),width=0.1,alpha=0.1,colour='gray',size=sizeVec) +
-            theme(##panel.background= element_blank(),
-                axis.text.x = element_text(size=14,angle=45,vjust=0.5),
-                axis.text.y = element_text(size=18),
-                axis.title.x = element_blank(),
-                axis.title.y = element_text(size=20),
-                legend.title = element_blank(),
-                legend.position='none',
-                plot.title=element_text(hjust=1.0,size=22)
-                  ) +
-            ylab(ylabel) +
-            ggtitle(plot.title) +
-            scale_x_discrete(labels=x.labels,limits=names(x.labels))
+        ## output.plot <- ggplot() +
+        ##     ## geom_violin(data=plot.dat,aes(x=x,y=log2(abs(y)+0),fill=x),scale='width') +
+        ##     ## geom_jitter(data=plot.dat,aes(x=x,y=log2(abs(y)+0)),width=0.1,alpha=0.1,colour='gray',size=sizeVec) +
+        ##     geom_violin(data=plot.dat,aes(x=x,y=y+0,fill=x),scale='width')+
+        ##     geom_jitter(data=plot.dat,aes(x=x,y=y+0),width=0.1,alpha=0.1,colour='gray',size=sizeVec) +
+        ##     theme(##panel.background= element_blank(),
+        ##         axis.text.x = element_text(size=14,angle=45,vjust=0.5),
+        ##         axis.text.y = element_text(size=18),
+        ##         axis.title.x = element_blank(),
+        ##         axis.title.y = element_text(size=20),
+        ##         legend.title = element_blank(),
+        ##         legend.position='none',
+        ##         plot.title=element_text(hjust=1.0,size=22)
+        ##           ) +
+        ##     ylab(ylabel) +
+        ##     ggtitle(plot.title) +
+        ##     scale_x_discrete(labels=x.labels,limits=names(x.labels))
 
             ## scale_
             ## geom_violin(data=dataResults, x = ~y1, y = ~y2,mode="markers",type='scatter',color = colVarResults,text=colVarResults)
             ## config(p = .,modeBarButtonsToRemove = c("zoom2d",'toImage','autoScale2d','hoverClosestGl2d'),collaborate=FALSE,cloud=FALSE) %>%
             ## config(collaborate=FALSE) %>%
 
+        updateSelectizeInput(session,
+                             'violinGroup',
+                             choices=c(unique(violinData$x),unique(selectionRes$group),'Unlabelled'),
+                             selected=top.groups,
+                             label=NULL)
+
+        isolate({
+            user.selections$currentViolinGroups <- unlist(top.groups)
+            ## user.selections$violinGroupRendered <- TRUE
+        })
+
+        ## print('violllin')
+
+        print('plotly render violin')
+
+        output.plot <- plot_ly() %>%
+            plotly::config(modeBarButtonsToRemove=c('hoverCompareCartesian','resetScale2d','hoverClosestCartesian','toggleSpikelines','zoomIn2d','zoomOut2d','autoScale2d','pan2d','zoom2d'))
+
+        ## print(unlist(top.groups))
+
+        for(group in unlist(top.groups)){
+
+            if(!grepl('Selection',group)){
+                output.plot <- output.plot %>%
+                    add_trace(data=subset(plot.dat,x==group),
+                              x=~x,
+                              y=~y,
+                              type='violin',
+                              name=group,
+                              hoveron='violin')#,
+                              ## color=~y)
+            } else{
+
+                select.dat <- violinData[subset(selectionRes,group==group)$samps,]
+                select.dat$x <- group
+
+                output.plot <- output.plot %>%
+                    ## add_trace(data=violinData[subset(selectionRes,group==group)$samps,],
+                    add_trace(data=select.dat,
+                              x=~x,
+                              y=~y,
+                              type='violin',
+                              name=group,
+                              hoveron='violin')#,
+                              ## color=~y)
+            }
+        }
+
+        ## output.plot <- plot_ly() %>%
+        ##     add_trace(
+
+        ## output.plot <- plot_ly(plot.dat, x=~x,y=~y,
+        ##                        color = ~x,
+        ##                        type='violin',
+        ##                        source='violin') %>%
+        ##     plotly::config(modeBarButtonsToRemove=c('hoverCompareCartesian','resetScale2d','hoverClosestCartesian','toggleSpikelines','zoomIn2d','zoomOut2d','autoScale2d','pan2d','zoom2d'))
+
+        output.plot <- output.plot %>%
+            plotly::layout(
+                'xaxis' = list(
+                    'title'=list(text=''),
+                    showticklabels=FALSE,
+                    categoryorder='trace'))
+                    ## categoryarray=unlist(top.groups)))
+
         output.plot
-        
+
     })
 
     ## observe({
@@ -1612,6 +1993,12 @@ shinyServer(function(input,output,session){
             markerSize <- input$markerSize
             geneScale <- input$geneScale
             layout.dat <- event_data('plotly_relayout',source='tsne')
+
+            violinData <- violinData()
+            violinXGroup <- input$violinXFactors
+            user.selections$colorButtonActive <- TRUE
+            selectionRes <- selectionVec()
+            selectionRows <- input$selectionList_rows_selected
         })
 
         color.ramp <- NULL
@@ -1821,7 +2208,7 @@ shinyServer(function(input,output,session){
                 ## colorway='Set3'))
                 ##         colorway= c('#f3cec9', '#e7a4b6', '#cd7eaf', '#a262a9', '#6f4d96', '#3d3b72', '#182844')))
                 
-
+                
                             
                 
                 user.selections$tsne.traces <- tsne.traces
@@ -1885,48 +2272,103 @@ shinyServer(function(input,output,session){
             })
         }
 
-        if(is.null(layout.dat)){
+############################
+#### handle new violin plot
+############################
+
+        if(user.selections$violinGroupRendered){
+
+            ## print('color button violin')
+
+            selectionNames <- sapply(selectionRows,function(x) paste('Selection:',as.character(user.selections$selection.datalist[x,'name'])))
+
+            violinData <- subset(violinData, x != 'NA')
+
+            if(any(violinData$x == 'All')){
+                top.groups <- 'All'
+
+            } else if(violinXGroup == 'Louvain'){
+
+                group.means <- aggregate(violinData[,'y'],list(violinData[,'x']),function(x) mean(exp(x)))
+
+                group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
+
+                num.selections <- length(selectionNames)
+
+                if(length(selectionNames) > 0){
+                    num.selections <- length(selectionNames)
+                } else{
+                    ## selectionRes <- data.frame()
+                    num.selections <- 0
+                }
+
+                top.groups <- group.means[1:(10-num.selections)]
+
+                top.groups <- c(top.groups,selectionNames,'Unlabelled')
+
+            } else if(violinXGroup=='tissue_general'){
+
+                top.groups <- unique(violinData$x)
+
+            } else if(violinXGroup=='tissue_detail'){
+
+                if(length(selectionNames) > 0){
+                    num.selections <- length(selectionNames)
+                } else{
+                    num.selections <- 0
+                }
+
+                group.means <- aggregate(violinData[,'y'],list(violinData[,'x']),function(x) mean(exp(x)))
+                group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
+                group.means <- group.means[! group.means %in% c('Skin','Soft Tissue','Thymus')]
+
+                top.groups <- group.means[1:(13 - num.selections)]
+
+                ## print(selectionNames)
+
+                top.groups <- c(top.groups,selectionNames,'Unlabelled')
+            } else{
+
+                labelled.dat <- subset(violinData,x != 'unlabelled')
+
+                group.cnts <- table(labelled.dat[,'x'])
+                used.groups <- names(which(group.cnts>(nrow(labelled.dat) / 100)))
+                labelled.dat <- subset(labelled.dat,x %in% used.groups)
+
+                if(length(selectionNames) > 0){
+                    num.selections <- length(selectionNames)
+                } else{
+                    num.selections <- 0
+                }
+
+                if((length(unique(violinData$x)) + num.selections > 10)){
+
+                    group.means <- aggregate(labelled.dat[,'y'],list(labelled.dat[,'x']),mean)
+                    group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
+
+                    top.groups <- group.means[1:(10 - num.selections)]
+
+                    top.groups <- c(top.groups,selectionNames,'Unlabelled')
+                } else{
+
+                    top.groups <- c(unique(labelled.dat[,'x']),selectionNames,'Unlabelled')
+
+                }
+            }
+
+            ## print('top groups')
+            ## print(top.groups)
+            ## print(c(unique(violinData$x),unique(selectionRes$group),'Unlabelled'))
             
-            ax.x <- ax.y <- list(
-                title = "",
-                zeroline = FALSE,
-                showline = FALSE,
-                showticklabels = FALSE,
-                showgrid = FALSE,
-                range = c(-110,110)
-            )
-            
-        }
-        else{
 
-            ax.x <- list(
-                title = "",
-                zeroline = FALSE,
-                showline = FALSE,
-                showticklabels = FALSE,
-                showgrid = FALSE,
-                range=c(layout.dat[['xaxis.range[0]']],layout.dat[['xaxis.range[1]']]))
-
-            ax.y <- list(
-                title = "",
-                zeroline = FALSE,
-                showline = FALSE,
-                showticklabels = FALSE,
-                showgrid = FALSE,
-                range=c(layout.dat[['yaxis.range[0]']],layout.dat[['yaxis.range[1]']]))
-
-        }
-        
-        ## print(length(colVarPlot))
-
-
-        ## plotlyProxy('tsne',session) %>%
-        ##     plotlyProxyInvoke(
-        ##         'restyle',
-        ##         'marker.color',runif(length(colVarPlot)))
-
-        
-
+            updateSelectizeInput(session,
+                                 'violinGroup',
+                                 choices = c(unique(violinData$x),unique(selectionRes$group),'Unlabelled'),
+                                 selected = top.groups,
+                                 label=NULL)
+        }##  else{
+        ##     print('escaped color button')
+        ## }
     })        
 
     output$tsne <- renderPlotly({
@@ -2209,12 +2651,9 @@ shinyServer(function(input,output,session){
             ## config(collaborate=FALSE) %>%
 
 
-        print('bar')
-
         output.plot
         ## }
 
     })
   
 })
-
