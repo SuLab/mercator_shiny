@@ -108,9 +108,7 @@ shinyServer(function(input,output,session){
 
 
     onevent('change','violinXFactors',function(event){
-        
         isolate({user.selections$violinX.change <- TRUE})
-
     })
     ## updateSelectizeInput(session,
     ##                      'hooHa',
@@ -1347,7 +1345,7 @@ shinyServer(function(input,output,session){
         ## }
 
         if(user.selections$firstViolinRender){
-            print('escape first render')
+            ## print('escape first render')
             user.selections$firstViolinRender <- FALSE
             user.selections$colorButtonActive <- FALSE
             return()
@@ -1488,8 +1486,8 @@ shinyServer(function(input,output,session){
                 
                 new.group <- setdiff(violinGroups,user.selections$currentViolinGroups)
                 
-                print('add')
-                print(new.group)
+                ## print('add')
+                ## print(new.group)
 
                 if(new.group == 'Unlabelled'){
 
@@ -1580,8 +1578,8 @@ shinyServer(function(input,output,session){
 
                 new.group <- setdiff(user.selections$currentViolinGroups,violinGroups)
 
-                print('remove')
-                print(new.group)
+                ## print('remove')
+                ## print(new.group)
 
                 if(new.group == 'Unlabelled'){
 
@@ -1635,7 +1633,7 @@ shinyServer(function(input,output,session){
 
         }
 
-        print(new.order)
+        ## print(new.order)
 
         ## user.selections$currentViolinGroups <- violinGroups        
         user.selections$currentViolinGroups <- new.order
@@ -1671,6 +1669,8 @@ shinyServer(function(input,output,session){
 
             plot.dat <- violinData
             
+            group.choices <- c('All')
+
         } else if(violinXGroup == 'Louvain'){
             group.means <- aggregate(violinData[,'y'],list(violinData[,'x']),function(x) mean(exp(x)))            
             group.means <- group.means[['Group.1']][order(group.means$x,decreasing=TRUE)]
@@ -1690,11 +1690,15 @@ shinyServer(function(input,output,session){
             plot.dat <- violinData
             plot.dat[!(plot.dat$x %in% top.groups),'x'] <- 'Unlabelled'
 
+            group.choices <- c(unique(violinData$x),unique(selectionRes$group),'Unlabelled')
+
         } else if(violinXGroup =='tissue_general'){
 
             top.groups <- unique(violinData$x)
             plot.dat <- violinData
             plot.dat[!(plot.dat$x %in% top.groups),'x'] <- 'Unlabelled'
+
+            group.choices <- c(unique(violinData$x),unique(selectionRes$group),'Unlabelled')
 
         } else if(violinXGroup == 'tissue_detail'){
 
@@ -1714,6 +1718,8 @@ shinyServer(function(input,output,session){
             plot.dat[!(plot.dat$x %in% top.groups),'x'] <- 'Unlabelled'
 
             top.groups <- c(top.groups,selectionNames,'Unlabelled')
+
+            group.choices <- c(unique(violinData$x),unique(selectionRes$group),'Unlabelled')
 
         } else{
 
@@ -1741,6 +1747,9 @@ shinyServer(function(input,output,session){
 
                 top.groups <- c(top.groups,selectionNames,'Unlabelled')
             }
+
+            group.choices <- c(unique(violinData$x),unique(selectionRes$group),'Unlabelled')
+            
         }
         
         ##     used.names <- intersect(names(xGroup),names(yGroup))
@@ -1869,7 +1878,7 @@ shinyServer(function(input,output,session){
 
         updateSelectizeInput(session,
                              'violinGroup',
-                             choices=c(unique(violinData$x),unique(selectionRes$group),'Unlabelled'),
+                             choices=group.choices,
                              selected=top.groups,
                              label=NULL)
 
@@ -1880,7 +1889,7 @@ shinyServer(function(input,output,session){
 
         ## print('violllin')
 
-        print('plotly render violin')
+        ## print('plotly render violin')
 
         output.plot <- plot_ly() %>%
             plotly::config(modeBarButtonsToRemove=c('hoverCompareCartesian','resetScale2d','hoverClosestCartesian','toggleSpikelines','zoomIn2d','zoomOut2d','autoScale2d','pan2d','zoom2d'))
@@ -2238,7 +2247,6 @@ shinyServer(function(input,output,session){
                                      y=dataResults[x,'y2'],
                                      mode='markers',
                                      type='scattergl',
-                                     showlegend=FALSE,
                                      ## opacity=if(name!='unlabelled') 0.8 else 0.25,
                                      ## name=name,
                                      marker=list(size=markerSize,
@@ -2264,7 +2272,7 @@ shinyServer(function(input,output,session){
                             'restyle',
                             list('marker.color'=list(unname(colVarPlot)),
                                  'marker.colorscale'=color.ramp,
-                                 'marker.showscale'=TRUE))
+                                 'marker.showscale'=(length(tsne.traces)>1)))
 
                 }
 
@@ -2287,6 +2295,8 @@ shinyServer(function(input,output,session){
             if(any(violinData$x == 'All')){
                 top.groups <- 'All'
 
+                group.choices <- c('All')
+
             } else if(violinXGroup == 'Louvain'){
 
                 group.means <- aggregate(violinData[,'y'],list(violinData[,'x']),function(x) mean(exp(x)))
@@ -2306,9 +2316,13 @@ shinyServer(function(input,output,session){
 
                 top.groups <- c(top.groups,selectionNames,'Unlabelled')
 
+                group.choices <- c(unique(violinData$x),unique(selectionRes$group),'Unlabelled')                
+
             } else if(violinXGroup=='tissue_general'){
 
                 top.groups <- unique(violinData$x)
+
+                group.choices <- c(unique(violinData$x),unique(selectionRes$group),'Unlabelled')                
 
             } else if(violinXGroup=='tissue_detail'){
 
@@ -2327,6 +2341,9 @@ shinyServer(function(input,output,session){
                 ## print(selectionNames)
 
                 top.groups <- c(top.groups,selectionNames,'Unlabelled')
+
+                group.choices <- c(unique(violinData$x),unique(selectionRes$group),'Unlabelled')
+                
             } else{
 
                 labelled.dat <- subset(violinData,x != 'unlabelled')
@@ -2354,6 +2371,8 @@ shinyServer(function(input,output,session){
                     top.groups <- c(unique(labelled.dat[,'x']),selectionNames,'Unlabelled')
 
                 }
+
+                group.choices <- c(unique(violinData$x),unique(selectionRes$group),'Unlabelled')                
             }
 
             ## print('top groups')
@@ -2363,7 +2382,7 @@ shinyServer(function(input,output,session){
 
             updateSelectizeInput(session,
                                  'violinGroup',
-                                 choices = c(unique(violinData$x),unique(selectionRes$group),'Unlabelled'),
+                                 choices = group.choices,
                                  selected = top.groups,
                                  label=NULL)
         }##  else{

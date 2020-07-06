@@ -45,7 +45,7 @@ fluidPage(
                                                     plotlyOutput('violin',width='100%',height='100%'),
 
                                                     fluidRow(
-                                                        column(8,offset=4,
+                                                        column(11,offset=0,
                                                                selectizeInput('violinGroup',
                                                                               label=NULL,
                                                                               choices=NULL,
@@ -156,7 +156,7 @@ fluidPage(
                         ## )
                ),
     
-    absolutePanel(id='controlPanel', fixed=FALSE, draggable=TRUE, top=60, left=20, right='auto', bottom='auto', width=400, height='auto',
+    absolutePanel(id='controlPanel', fixed=FALSE, draggable=TRUE, top=60, left=20, right='auto', bottom='auto', width=400, height='auto',style="z-index:100;",
                   
                   ## wellPanel(
 
