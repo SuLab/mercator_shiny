@@ -234,6 +234,7 @@ shinyServer(function(input,output,session){
     })
 
     observeEvent(input$saveSelection, {
+
         
         event.data <- event_data('plotly_selected',source = 'tsne')
 
@@ -269,7 +270,7 @@ shinyServer(function(input,output,session){
         }
 
         user.selections$selection.datalist <- rbind(user.selections$selection.datalist,data.frame('name'=label,'length'=nrow(event.data)))
-
+            
     })
 
     output$sampleInputTable <- DT::renderDT({
@@ -820,9 +821,6 @@ shinyServer(function(input,output,session){
 
         }
 
-        
-
-
         return(results)
 
     })
@@ -885,42 +883,38 @@ shinyServer(function(input,output,session){
 
     output$plotlyClick <- renderUI({
 
-        click.event <- event_data('plotly_click',source='tsne')
+        resp <- try({
 
-        if(is.null(click.event) == T) return('Click on a t-SNE point to link to SRA entry')
+            click.event <- event_data('plotly_click',source='tsne')
 
-        curveNumber <- click.event$curveNumber+1
-        inds <- click.event$pointNumber+1
+            if(is.null(click.event) == T) return('Click on a t-SNE point to link to SRA entry')
 
-        run.id <- user.selections$tsne.traces[[curveNumber]][inds]
+            curveNumber <- click.event$curveNumber+1
+            inds <- click.event$pointNumber+1
 
-        samp.id <- tsne.meta[run.id,'samp_id']
+            run.id <- user.selections$tsne.traces[[curveNumber]][inds]
 
-        ## case.id <- tsne.meta[run.id,'tcga.case.ids$gdc_cases.case_id']
-        case.id <- tsne.meta[run.id,'gdc_cases.case_id']
+            samp.id <- tsne.meta[run.id,'samp_id']
 
-        if(is.na(run.id)) return('Click on a t-SNE point to link to SRA entry')
+            case.id <- tsne.meta[run.id,'gdc_cases.case_id']
 
-        if(tsne.meta[run.id,'proj_id'] == 'TCGA'){
-            ## url <- a(sprintf('TCGA link to sample %s',samp.id),href=paste('https://portal.gdc.cancer.gov/repository?facetTab=cases&filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22cases.submitter_id%22%2C%22value%22%3A%5B%22',samp.id,'%22%5D%7D%7D%5D%7D',sep=''),target='_blank')
+            if(is.na(run.id)) return('Click on a t-SNE point to link to SRA entry')
 
-            ## a(sprintf('Link to TCGA case %s',samp.id),href=sprintf('https://portal.gdc.cancer.gov/cases/%s',case.id),target='_blank')
+            if(tsne.meta[run.id,'proj_id'] == 'TCGA'){
 
-            url <- a(sprintf('Link to TCGA case %s',samp.id),href=sprintf('https://portal.gdc.cancer.gov/cases/%s',case.id),target='_blank')
+                url <- a(sprintf('Link to TCGA case %s',samp.id),href=sprintf('https://portal.gdc.cancer.gov/cases/%s',case.id),target='_blank')
 
-            ## print(head(tsne.meta))
-            ## url <- a(sprintf('Link to TCGA case %s',user.selections$tsne.traces[[curveNumber]][inds]),href=sprintf('https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=%s',user.selections$tsne.traces[[curveNumber]][inds]),target='_blank')
-        } else{
+            } else{
 
-            url <- a(sprintf('Link to SRA run %s',user.selections$tsne.traces[[curveNumber]][inds]),href=sprintf('https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=%s',user.selections$tsne.traces[[curveNumber]][inds]),target='_blank')
+                url <- a(sprintf('Link to SRA run %s',user.selections$tsne.traces[[curveNumber]][inds]),href=sprintf('https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=%s',user.selections$tsne.traces[[curveNumber]][inds]),target='_blank')
 
-        }
+            }
 
-        return(tagList(url))
+            return(tagList(url))
 
-        ## print(head(user.selections$tsne.traces[[curveNumber]]))
+        })
 
-        ## print(user.selections$tsne.traces[[curveNumber]][inds])
+        return(resp)
 
     })
 
@@ -1247,8 +1241,8 @@ shinyServer(function(input,output,session){
         output.plot <- plot_ly(data=plot.dat,
                                x=~Label,
                                y=~number,
-                               color=~Label) %>%
-            plotly::config(modeBarButtonsToRemove=c('hoverCompareCartesian','resetScale2d','hoverClosestCartesian','toggleSpikelines','zoomIn2d','zoomOut2d','autoScale2d','pan2d','zoom2d'))
+                               color=~Label)##  %>%
+            ## plotly::config(modeBarButtonsToRemove=c('hoverCompareCartesian','resetScale2d','hoverClosestCartesian','toggleSpikelines','zoomIn2d','zoomOut2d','autoScale2d','pan2d','zoom2d')) 
         output.plot
 
     })
@@ -1891,7 +1885,7 @@ shinyServer(function(input,output,session){
 
         ## print('plotly render violin')
 
-        output.plot <- plot_ly() %>%
+        output.plot <- plot_ly(source='violin') %>%
             plotly::config(modeBarButtonsToRemove=c('hoverCompareCartesian','resetScale2d','hoverClosestCartesian','toggleSpikelines','zoomIn2d','zoomOut2d','autoScale2d','pan2d','zoom2d'))
 
         ## print(unlist(top.groups))
