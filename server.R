@@ -7,13 +7,13 @@ library(stats)
 library(shiny)
 library(scales)
 library(plotly)
-library(httr)
+## library(httr)
 library(shinyTree)
 library(jsonlite)
 library(DT)
 library(shinyjs)
 library(stringr)
-library(parallel)
+## library(parallel)
 library(DBI)
 library(odbc)
 
@@ -96,6 +96,8 @@ shinyServer(function(input,output,session){
         violinGroupRendered = FALSE,
         firstViolinRender = FALSE
     )
+
+    con <- dbConnect(odbc::odbc(),'Mercator PostGres Unicode')
 
     updateSelectizeInput(session,
                          'whichGene',
@@ -616,7 +618,11 @@ shinyServer(function(input,output,session){
 
         gene.id <- input$whichGene
 
-        gene.info <- fromJSON(sprintf('http://localhost:3000/gene_vals/%s',gene.id))
+        gene.req <- dbSendQuery(con,sprintf("SELECT vals FROM gene_vals WHERE gene_id = '%s'",gene.id))
+        gene.info <- fromJSON(dbFetch(gene.req)[1,1])
+        dbClearResult(gene.req)
+
+        ## gene.info <- fromJSON(sprintf('http://localhost:3000/gene_vals/%s',gene.id))
 
         names(gene.info) <- gene.tpm.samps
 
@@ -649,7 +655,12 @@ shinyServer(function(input,output,session){
         } else{
             tissue.selection <- unlist(get_selected(tree))
             tissue.id <- strsplit(tissue.selection,':')[[1]][1]
-            tissue.info <- fromJSON(sprintf('http://localhost:3000/tissue_info/%s',tissue.id))
+
+            tiss.req <- dbSendQuery(con,sprintf("SELECT termtree FROM tissue_tree WHERE id = '%s'",tissue.id))
+            tissue.info <- fromJSON(dbFetch(tiss.req)$termtree)
+            dbClearResult(tiss.req)
+            
+            ## tissue.info <- fromJSON(sprintf('http://localhost:3000/tissue_info/%s',tissue.id))
 
             ## tissue.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM tissue_tree WHERE id='%s'",tissue.id)))
             ## tissue.info <- fromJSON(tissue.req$termtree)
@@ -676,9 +687,11 @@ shinyServer(function(input,output,session){
             doid.split <- strsplit(doid.selection,':')[[1]]
             doid.id <- paste(doid.split[1],doid.split[2],sep='_')
 
-            ## doid.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM doid_dat WHERE id='%s'",doid.id)))
+            doid.req <- dbSendQuery(con,sprintf("SELECT termtree FROM doid_dat WHERE id = '%s'",doid.id))
+            doid.info <- fromJSON(dbFetch(doid.req)$termtree)
+            dbClearResult(doid.req)
 
-            doid.info <- fromJSON(sprintf('http://localhost:3000/doid_info/%s',doid.id))
+            ## doid.info <- fromJSON(sprintf('http://localhost:3000/doid_info/%s',doid.id))
             ## doid.info <- fromJSON(doid.req$termtree)
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
@@ -702,12 +715,13 @@ shinyServer(function(input,output,session){
             efo.split <- strsplit(efo.selection,':')[[1]]
             efo.id <- paste(efo.split[1],efo.split[2],sep='_')
 
-            ## efo.id <- efo.split[1]
+            efo.req <- dbSendQuery(con,sprintf("SELECT termtree FROM efo_tree WHERE id = '%s'",efo.id))
+            efo.info <- fromJSON(dbFetch(efo.req)$termtree)
+            dbClearResult(efo.req)
 
-            ## efo.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM efo_tree WHERE id='%s'",efo.id)))
-            ## efo.info <- fromJSON(efo.req$termtree)
+            ## efo.info <- fromJSON(sprintf('http://localhost:3000/efo_info/%s',efo.id))
 
-            efo.info <- fromJSON(sprintf('http://localhost:3000/efo_info/%s',efo.id))
+            
             colVar <- rep('unlabelled',length(tsne.order))
             names(colVar) <- tsne.order
 
@@ -728,7 +742,12 @@ shinyServer(function(input,output,session){
         } else{
             mesh.selection <- unlist(get_selected(tree))
             mesh.id <- strsplit(mesh.selection,':')[[1]][1]
-            mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
+
+            mesh.req <- dbSendQuery(con,sprintf("SELECT termtree FROM mesh_tree WHERE id = '%s'",mesh.id))
+            mesh.info <- fromJSON(dbFetch(mesh.req)$termtree)
+            dbClearResult(mesh.req)
+
+            ## mesh.info <- fromJSON(sprintf('http://localhost:3000/ontology_info/%s',mesh.id))
 
             ## mesh.req <- dbFetch(dbSendQuery(mercator.db.con,sprintf("SELECT termtree FROM mesh_tree WHERE id='%s'",mesh.id)))
             ## mesh.info <- fromJSON(mesh.req$termtree)
@@ -947,7 +966,11 @@ shinyServer(function(input,output,session){
 
             label <- sprintf('%s.%s',label.1,label.2)
 
-            marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
+            marker.req <- dbSendQuery(con,sprintf("SELECT gene_table FROM pairwise_markers WHERE pair_id = '%s'",label))
+            marker.tab <- fromJSON(dbFetch(marker.req)$gene_table)
+            dbClearResult(marker.req)
+
+            ## marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
 
             rownames(marker.tab) <- marker.tab[,1]
             colnames(marker.tab) <- c('ens_id','unique','p-val','unique-fcs','total-fcs','stat')
