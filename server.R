@@ -2070,6 +2070,9 @@ shinyServer(function(input,output,session){
             geneVecResults <- geneVecResults[!inf.gene.vals]
             colVarPlot <- geneVecResults
             ## colVarPlot <- colVarPlot[!is.infinite(colVarPlot)]
+
+
+            
             dataResults <- dataResults[names(colVarPlot),]
 
             
@@ -2283,13 +2286,26 @@ shinyServer(function(input,output,session){
                         ##          colorway=NULL))
                 }
                 else{
-                    
+
+                    ## print(length(paste(dataResults[,'hover.labels'],
+                    ##                                '<br>Gene: ',dataResults[,'Gene'],
+                    ##                                '<br>Annotation: ',colVarAnnotation)))
+
+                          
+
                     plotlyProxy('tsne',session) %>%
                         plotlyProxyInvoke(
                             'restyle',
                             list('marker.color'=list(unname(colVarPlot)),
+                                 showLegend=TRUE,
                                  'marker.colorscale'=color.ramp,
-                                 'marker.showscale'=(length(tsne.traces)>1)))
+                                 'marker.showscale'=(colorFactors != 'No Coloring'),
+                                 ## 'hoverinfo'='text',
+                                 'text'=list(as.list(paste(dataResults[1:nrow(dataResults),'hover.labels'],
+                                                   '<br>Gene: ',dataResults[1:nrow(dataResults),'Gene'],
+                                                   '<br>Annotation: ',colVarAnnotation)))))
+                        
+                                 ## 'marker.showscale'=(length(tsne.traces)>1)))
 
                 }
 
