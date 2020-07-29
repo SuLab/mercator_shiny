@@ -331,52 +331,13 @@ shinyServer(function(input,output,session){
 
     output$geneTable <- DT::renderDT({
 
-        ## if(input$geneGroup == 'all'){
-        ##     label.1 <- 'all'
-        ##     label.2 <- input$geneGroupSecond
-        ## }
-        ## else{
-        ##     label.1 <- as.numeric(input$geneGroup)
-        ##     label.2 <- as.numeric(input$geneGroupSecond)
-
-        ##     if(label.1 > label.2){
-        ##         tmp <- label.1
-        ##         label.1 <- label.2
-        ##         label.2 <- tmp
-        ##     }
-        ## }
-
-        ## ## label.2 <- as.numeric(input$geneGroupSecond)+1
-
-        ## label <- sprintf('%s.%s',label.1,label.2)
-
-        ## marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
-
-        ## rownames(marker.tab) <- marker.tab[,1]
-        ## colnames(marker.tab) <- c('ens_id','p-val','unique-fcs','total-fcs')
-
-        ## marker.tab <- cbind(cellmarker.info[rownames(marker.tab),],marker.tab[,c(2,3,4)])
-
-        ## marker.tab <- marker.tab[,c(-3)]
-        ## colnames(marker.tab) <- c('Symbol','ID','gene-type','tissueType','cancerType','cellType','cellName','p-val','unique-fcs','total-fcs')
-
         marker.tab <- getGeneTable()
 
         if(nrow(marker.tab) > 0){
-            ## marker.tab <- marker.tab[,c(10,8,9,3,4,5,6,7,11:ncol(marker.tab))]
             marker.tab <- marker.tab[,c(10,8,9,3,11:ncol(marker.tab))]
 
         }
 
-        ## print(head(marker.tab))
-
-        ## if(input$geneGroup == 'all'){
-        ##     dt <- marker.list[['all']]
-        ## } else{
-        ##     dt <- marker.list[[as.double(input$geneGroup)+1]]
-        ## }
-
-        ## dataDT <- DT::datatable(dt,
         dataDT <- DT::datatable(marker.tab,
                                 ## colnames=c('Ensembl ID','Symbol','Entrez ID','Gene Type','CM tissueType','CM cancerType','CM cellType','CM cellName','Unique','cluster p-val','cluster fc','cluster-all fc'),
                                 selection='single',
@@ -396,62 +357,7 @@ shinyServer(function(input,output,session){
 
     output$sampleTable <- DT::renderDT({
 
-        ## input$colorButton
 
-        ## isolate({
-
-        ## selectionRes <- selectionVec()
-        ## louvainVec <- louvainVec()
-        ## meshResults <- meshVec()
-        ## tissueResults <- tissueVec()
-        ## doidResults <- doidVec()
-        ## efoResults <- efoVec()
-
-        ## ## })
-
-        ## dt <- tsne.meta[,c(1,2,3,4,5,7,8)]
-
-        ## dt$Louvain <- louvainVec
-
-        ## if(is.null(meshResults)){
-        ##     dt$mesh <- NA
-        ## } else{
-        ##     dt$mesh <- meshResults
-        ## }
-
-        ## if(is.null(tissueResults)){
-        ##     dt$tissue <- NA
-        ## } else{
-        ##     dt$tissue <- tissueResults
-        ## }
-
-        ## if(is.null(doidResults)){
-        ##     dt$doid <- NA
-        ## } else{
-        ##     dt$doid <- doidResults
-        ## }
-
-        ## if(is.null(efoResults)){
-        ##     dt$efo <- NA
-        ## } else{
-        ##     dt$efo <- efoResults
-        ## }
-
-        ## if(input$sampleTableControl == 'Selection'){
-        ##     dt <- dt[selectionRes$samps,]
-        ##     dt$group <- selectionRes$group
-        ## ## } else if('Louvain' %in% input$sampleTableControl){
-        ## } else if(grepl('Louvain',input$sampleTableControl)){
-        ##     louvain.id <- gsub('Louvain Cluster ','',input$sampleTableControl)
-
-        ##     dt <- subset(dt,Louvain==as.numeric(louvain.id))
-        ## }
-
-        ## rownames(dt) <- c()
-
-
-
-        ## dataDT <- DT::datatable(dt,
         dataDT <- DT::datatable(getSampleTable()[,c(-6)],
                                 options = list(pageLength=25
                                                ),
@@ -1004,7 +910,11 @@ shinyServer(function(input,output,session){
 
             label <- sprintf('%s.%s',label.1,label.2)
 
-            marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
+            marker.req <- dbSendQuery(con,sprintf("SELECT gene_table FROM pairwise_markers WHERE pair_id = '%s'",label))
+            marker.tab <- fromJSON(dbFetch(marker.req)$gene_table)
+            dbClearResult(marker.req)
+
+            ## marker.tab <- fromJSON(sprintf('http://localhost:3000/pairwise_markers/%s',label))
 
             rownames(marker.tab) <- marker.tab[,1]
             colnames(marker.tab) <- c('ens_id','p-val','fc','test.stat')
@@ -1109,7 +1019,11 @@ shinyServer(function(input,output,session){
             paste('samples-',Sys.Date(),'.csv',sep='')
         },
         content = function(con) {
-            write.csv(getSampleTable()[,c(-5)],con)
+            isolate({
+                search.rows <-input$sampleTable_rows_all
+
+            })
+            write.csv(getSampleTable()[search.rows,c(-5)],con)
         }
     )
 
@@ -2162,9 +2076,9 @@ shinyServer(function(input,output,session){
             colVarPlot[colVarPlot == 'NA'] <- 'unlabelled'
             colVarAnnotation[colVarAnnotation == 'NA'] <- 'unlabelled'
 
-            set.seed(11)
+            set.seed(10)
             
-            color.ramp <- colorRampPalette(c("#8DD3C7","#FFFFB3","#BEBADA","#FB8072","#80B1D3","#FDB462","#B3DE69","#FCCDE5","#BC80BD","#CCEBC5","#FFED6F"))(length(unique(colVarPlot))) #,
+            color.ramp <- sample(colorRampPalette(c("#8DD3C7","#FFFFB3","#BEBADA","#FB8072","#80B1D3","#FDB462","#B3DE69","#FCCDE5","#BC80BD","#CCEBC5","#FFED6F"))(length(unique(colVarPlot)))) #,
                                    ## colorRampPalette(brewer.pal(12,"Set3"))(length(unique(colVarPlot))),
                                    ## sample(unique(colVarPlot)
             ## color.ramp['unlabelled'] <- '#F0F0F0'
