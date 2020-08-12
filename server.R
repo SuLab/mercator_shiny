@@ -532,6 +532,8 @@ shinyServer(function(input,output,session){
 
         names(gene.info) <- gene.tpm.samps
 
+        print(head(gene.info))
+
         geneVec <- rep(NA,length(tsne.order))
         names(geneVec) <- tsne.order
 
@@ -959,6 +961,7 @@ shinyServer(function(input,output,session){
 
     })
 
+
     getSampleTable <- reactive({
 
         selectionRes <- selectionVec()
@@ -1019,11 +1022,26 @@ shinyServer(function(input,output,session){
             paste('samples-',Sys.Date(),'.csv',sep='')
         },
         content = function(con) {
+
+
             isolate({
                 search.rows <-input$sampleTable_rows_all
 
+                proj.tab <- matrix(0,nrow=nrow(tsne.data),ncol=nrow(user.selections$gene.input.datalist))
+                rownames(proj.tab) <- rownames(tsne.data)
+
+                write.tab <- getSampleTable()[search.rows,c(-5)]                            
+
+                if(ncol(proj.tab) > 0){
+                    colnames(proj.tab) <- paste('Projection: ',user.selections$gene.input.datalist$name)
+                    for(i in 1:ncol(proj.tab)){proj.tab[,i] <- user.selections$gene.input.results[[i]][rownames(proj.tab)]}
+
+                    write.tab <- cbind(write.tab,proj.tab[write.tab$run_id,])
+                }
+                
             })
-            write.csv(getSampleTable()[search.rows,c(-5)],con)
+
+            write.csv(write.tab,con)
         }
     )
 
