@@ -1,0 +1,37 @@
+---
+title: "Mercator vignette: Prepping input file for projection"
+author: "bruggsy"
+output: html_document
+---
+
+Mercator's sample projection function allows users to generate similarity scores for each sample in Mercator. 
+A specific .tsv file format must be used to ensure proper processing:
+
+```
+sample1   sample2
+"ENSG00000000003.14"    230690  92245
+"ENSG00000000005.5"     7694    101
+"ENSG00000000419.12"    149758  59561
+"ENSG00000000457.13"    45392   42325
+"ENSG00000000460.16"    114602  24734
+"ENSG00000000938.12"    1611    0
+"ENSG00000000971.15"    0       202
+"ENSG00000001036.13"    191342  82201
+...
+```
+
+In this case we have a two-sample file, but you can include up to five samples per upload.
+Gene counts should be unnormalized, and we recommend using the script and modified .bed file available at [the project Github](https://github.com/SuLab/mercator_shiny/tree/master/mercator_prep) to generate the counts for optimal performance with Mercator.
+The script requires binaries for the UCSC tools [wigToBigWig](https://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64.v385/wigToBigWig) and [bigWigAverageOverBed](https://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64.v385/bigWigAverageOverBed), and is a fairly straightforward gene counting protocol similar to the one used in [Recount2](https://github.com/leekgroup/recount-contributions).
+The input files must be wiggle files, we recommend using those generated from STAR using the `--outWigType wiggle` and `--outWigNorm None` options.
+
+```bash
+cd project_dir
+
+chmod u+x mercator_prep_star.sh
+./mercator_prep_star.sh -o output_file.tsv input_file1.wig input_file2.wig input_file3.wig
+```
+
+The output file can be submitted directly to Mercator, although once again only five samples are allowed at a time.
+
+(The links to the UCSC tools are for Linux, here are the MacOS binaries for [wigToBigWig](https://hgdownload.cse.ucsc.edu/admin/exe/macOSX.x86_64/wigToBigWig) and [bigWigAverageOverBed](https://hgdownload.cse.ucsc.edu/admin/exe/macOSX.x86_64/bigWigAverageOverBed))
