@@ -1,3 +1,7 @@
+##########################################################
+### Make nearest neighbor similarity graph for Mercator
+##########################################################
+
 library(RANN)
 library(igraph)
 library(philentropy)

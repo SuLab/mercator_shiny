@@ -1,3 +1,8 @@
+#################################################
+### Take pairwise DE results to find marker genes
+#################################################
+
+
 setwd('project_dir')
 
 marker.dat <- list()

@@ -1,3 +1,11 @@
+#################################################
+### Mercator t-SNE script
+### does a sweep of PC's and perplexities to 
+### determine optimal paramters
+### uses Rtsne package
+#################################################
+
+
 library(Rtsne)
 
 setwd('project_dir')

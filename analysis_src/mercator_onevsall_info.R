@@ -1,3 +1,7 @@
+###############################################################
+### Simply do one-vs-all calculations for marker information
+###############################################################
+
 library(jsonlite)
 library(parallel)
 library(arrangements)

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#####################################
+### Leiden clustering for Mercator
+### Uses Networkanalysis java package
+#####################################
+
 head -n 34759 results/recount/tmp/leiden_rsweep.seed > results/recount/clustering/leiden_rsweep_pca_over50_pc3sd_tpm_log_nv100_90th_var_genes_k30_sim.tsv
 
 for i in 0.007 0.0075 0.008 0.0085 0.009 0.0095 0.01 0.0105 0.011 0.0115 0.012 0.0125 0.013

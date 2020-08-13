@@ -1,5 +1,11 @@
 #!/usr/bin/python
 
+##############################
+# Nearest neighbor for Mercator
+# uses sklearn
+##############################
+
+
 import numpy as np
 import copy
 import heapq

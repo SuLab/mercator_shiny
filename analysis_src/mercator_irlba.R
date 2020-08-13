@@ -1,3 +1,8 @@
+##############################
+### PCA script for Mercator
+### uses irlba for partial svd
+############################## 
+
 library(irlba)
 library(bigmemory)
 library(bigalgebra)

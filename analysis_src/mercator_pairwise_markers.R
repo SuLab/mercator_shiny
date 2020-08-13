@@ -1,3 +1,10 @@
+#############################################################
+### Pairwise DE for Mercator
+### Normal script handles 500 cluster pairs at a time,
+### with many submissions at once. This is a single example
+#############################################################
+
+
 library(jsonlite)
 library(parallel)
 library(arrangements)
