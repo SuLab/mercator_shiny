@@ -1,37 +1,16 @@
-## Welcome to GitHub Pages
+## Mercator
 
-You can use the [editor on GitHub](https://github.com/SuLab/mercator_shiny/edit/master/docs/index.md) to maintain and preview the content for your website in Markdown files.
+Mercator is a web application for browsing and analyzing public RNA-seq data
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+### Vignette pages
 
-### Markdown
+This site contains basic links to all the vignettes for Mercator.
+Each is a basic description of a functionality for Mercator, and accompanying code for diving deeper into the analysis. 
+Many of these vignettes require the use of the (recount R package)[https://bioconductor.org/packages/release/bioc/html/recount.html], developed Leonardo Collado-Torres as part of the (Recount2)[https://jhubiostatistics.shinyapps.io/recount/] project.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+- (Mislabelling of TCGA samples)[tcga_mislabelling-exported.html]
+- (Aberrant clustering of Glioma samples)[aberrant_glioma_clustering-exported.html]
+- (FFPE clustering patterns)[tcga_ffpe_clustering-exported.html]
+- (Prepping input samples for projection)[projection_ipsc_neuron-exported.html]
 
-```markdown
-Syntax highlighted code block
 
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/SuLab/mercator_shiny/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
