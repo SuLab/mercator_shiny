@@ -1,6 +1,6 @@
 # Mercator
 
-A web application for browsing public RNA-seq results
+A web application for browsing and analyzing public RNA-seq data
 
 # Description
 
@@ -20,13 +20,5 @@ Mercator offers pre-computed clustering, differential expression, standardized m
 
 ### Re-use and contributions statement
 
-Fair game bb
+All our code and analysis results are open-source and free-to-use.
 
-# Getting started
-
-### How to use
-
-Mercator has many features, most of which are very simple to use.
-There are five main views acessed through tabs at the top of the page.
-A collapsible and movable control panel 
-The first is an interactive t-SNE.
