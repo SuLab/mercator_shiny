@@ -6,7 +6,7 @@ A web application for browsing and analyzing public RNA-seq data
 
 ### Overview
 
-This is a repository for the web application [Mercator](http://www.mercatorproject.com) Mercator is a web application for analysis and discovery of publicly available RNA-seq data.
+This is a repository for the web application [Mercator](http://www.mercatorproject.com) Mercator is a web application for analysis and discovery of publicly available RNA-seq data. More information on is available at our [Documentation](https://sulab.github.io/mercator_shiny/)
 
 ### Motivation
 
